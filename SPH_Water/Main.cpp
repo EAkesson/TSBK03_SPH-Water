@@ -21,7 +21,8 @@ using namespace glm;
 #include "Externals/controls.hpp"
 
 // CPU representation of a particle
-struct Particle {
+#include "Particle.h"
+/*struct Particle {
 	glm::vec3 pos, speed;
 	unsigned char r, g, b, a; // Color
 	float size, angle, weight;	
@@ -31,7 +32,7 @@ struct Particle {
 		// Sort in reverse order : far particles drawn first.
 		return this->cameradistance > that.cameradistance;
 	}
-};
+};*/
 
 const int MaxParticles = 10000;
 Particle ParticlesContainer[MaxParticles];
@@ -108,7 +109,7 @@ int main(void)
 
 	// Ensure we can capture the escape key being pressed below
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
-	// Hide the mouse and enable unlimited mouvement
+	// Hide the mouse and enable unlimited movement
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	// Set the mouse at the center of the screen
