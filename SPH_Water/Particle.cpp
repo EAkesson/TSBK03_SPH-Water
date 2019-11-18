@@ -2,6 +2,7 @@
 
 bool Particle::operator<(const Particle& that) const
 {
-	return this->cameradistance < that.cameradistance;
+	// Sort in reverse order : far particles drawn first.
+	return this->cameradistance > that.cameradistance;
 }
 
