@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <sstream>
 #include <vector>
 #include <algorithm>
 
@@ -33,6 +34,31 @@ using namespace glm;
 		return this->cameradistance > that.cameradistance;
 	}
 };*/
+
+
+
+// For fps counter
+float lastTime = 0.0f;
+int nbFrames = 0;
+
+void calcFPS()
+{
+	// Measure speed
+	double currentTime = glfwGetTime();
+	double delta = currentTime - lastTime;
+	nbFrames++;
+	if (delta >= 1.0) { // If last cout was more than 1 sec ago
+		double fps = double(nbFrames) / delta;
+
+		std::stringstream ss;
+		ss << "SPH_Water, We promise it looks good" << " [" << fps << " FPS]";
+
+		glfwSetWindowTitle(window, ss.str().c_str());
+
+		nbFrames = 0;
+		lastTime = currentTime;
+	}
+}
 
 const int MaxParticles = 10000;
 Particle ParticlesContainer[MaxParticles];
@@ -128,7 +154,6 @@ int main(void)
 	glGenVertexArrays(1, &VertexArrayID);
 	glBindVertexArray(VertexArrayID);
 
-
 	// Create and compile our GLSL program from the shaders
 	GLuint programID = loadShaders("Particle.vert", "Particle.frag");
 
@@ -191,6 +216,9 @@ int main(void)
 		double delta = currentTime - lastTime;
 		lastTime = currentTime;
 
+
+		// Calc FPS and set title
+		calcFPS();
 
 		computeMatricesFromInputs();
 		glm::mat4 ProjectionMatrix = getProjectionMatrix();
