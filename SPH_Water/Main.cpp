@@ -122,6 +122,45 @@ bool initProgram() {
 	return true;
 }
 
+void generateNewParticles(double *delta) {
+	// Generate 10 new particule each millisecond,
+		// but limit this to 16 ms (60 fps), or if you have 1 long frame (1sec),
+		// newparticles will be huge and the next frame even longer.
+	int newparticles = (int)(*delta*1000.0);
+	if (newparticles > (int)(0.016f*1000.0))
+		newparticles = (int)(0.016f*1000.0);
+
+	for (int i = 0; i < newparticles; i++) {
+		if (nextParticle < MaxParticles) {
+			ParticlesContainer[nextParticle].pos = glm::vec3(0, 4, -20.0f);
+
+			float spread = 1.5f;
+			glm::vec3 maindir = glm::vec3(0.0f, 10.0f, 0.0f);
+			// Very bad way to generate a random direction; 
+			// See for instance http://stackoverflow.com/questions/5408276/python-uniform-spherical-distribution instead,
+			// combined with some user-controlled parameters (main direction, spread, etc)
+			glm::vec3 randomdir = glm::vec3(
+				(rand() % 2000 - 1000.0f) / 1000.0f,
+				(rand() % 2000 - 1000.0f) / 1000.0f,
+				(rand() % 2000 - 1000.0f) / 1000.0f
+			);
+
+			ParticlesContainer[nextParticle].speed = maindir + randomdir * spread;
+
+
+			// Very bad way to generate a random color
+			ParticlesContainer[nextParticle].r = rand() % 256;
+			ParticlesContainer[nextParticle].g = rand() % 256;
+			ParticlesContainer[nextParticle].b = rand() % 256;
+			ParticlesContainer[nextParticle].a = 255;//(rand() % 256) / 3;
+
+			ParticlesContainer[nextParticle].size = (rand() % 1000) / 2000.0f + 0.1f;
+
+			nextParticle++;
+		}
+	}
+}
+
 
 
 int main(void)
@@ -232,54 +271,16 @@ int main(void)
 
 		glm::mat4 ViewProjectionMatrix = ProjectionMatrix * ViewMatrix;
 
-
-		// Generate 10 new particule each millisecond,
-		// but limit this to 16 ms (60 fps), or if you have 1 long frame (1sec),
-		// newparticles will be huge and the next frame even longer.
-		int newparticles = (int)(delta*1000.0);
-		if (newparticles > (int)(0.016f*1000.0))
-			newparticles = (int)(0.016f*1000.0);
-
-		for (int i = 0; i < newparticles; i++) {
-			if (nextParticle < MaxParticles) {				
-				ParticlesContainer[nextParticle].pos = glm::vec3(0, 4, -20.0f);
-
-				float spread = 1.5f;
-				glm::vec3 maindir = glm::vec3(0.0f, 10.0f, 0.0f);
-				// Very bad way to generate a random direction; 
-				// See for instance http://stackoverflow.com/questions/5408276/python-uniform-spherical-distribution instead,
-				// combined with some user-controlled parameters (main direction, spread, etc)
-				glm::vec3 randomdir = glm::vec3(
-					(rand() % 2000 - 1000.0f) / 1000.0f,
-					(rand() % 2000 - 1000.0f) / 1000.0f,
-					(rand() % 2000 - 1000.0f) / 1000.0f
-				);
-
-				ParticlesContainer[nextParticle].speed = maindir + randomdir * spread;
+		generateNewParticles(&delta);
 
 
-				// Very bad way to generate a random color
-				ParticlesContainer[nextParticle].r = rand() % 256;
-				ParticlesContainer[nextParticle].g = rand() % 256;
-				ParticlesContainer[nextParticle].b = rand() % 256;
-				ParticlesContainer[nextParticle].a = 255;//(rand() % 256) / 3;
+		// Simulate all particles		
+		for (int ParticlesCount = 0; ParticlesCount < nextParticle; ParticlesCount++) {
 
-				ParticlesContainer[nextParticle].size = (rand() % 1000) / 2000.0f + 0.1f;
-
-				nextParticle++;
-			}						
-		}
-
-
-
-		// Simulate all particles
-		int ParticlesCount = 0;
-		for (int i = 0; i < MaxParticles; i++) {
-
-			Particle& p = ParticlesContainer[i]; // shortcut
+			Particle& p = ParticlesContainer[ParticlesCount]; // shortcut
 
 			// Simulate simple physics : gravity only, no collisions
-			p.speed += glm::vec3(0.0f, -9.81f, 0.0f) * (float)delta * 0.5f;
+			p.speed += glm::vec3(0.0f, -9.82f, 0.0f) * (float)delta * 0.5f;
 			p.pos += p.speed * (float)delta;
 			p.pos.y = max(p.pos.y, -10.0f);
 			p.cameradistance = glm::length2(p.pos - CameraPosition);			
@@ -296,14 +297,13 @@ int main(void)
 			g_particule_color_data[4 * ParticlesCount + 2] = p.b;
 			g_particule_color_data[4 * ParticlesCount + 3] = p.a;
 
-			ParticlesCount++;
-						
+			//ParticlesCount++;		
 		}
 
 		SortParticles();
 
 
-		//printf("%d ",nextParticle);
+		//printf("%d ",ParticlesCount);		
 
 
 		// Update the buffers that OpenGL uses for rendering.
@@ -314,11 +314,11 @@ int main(void)
 
 		glBindBuffer(GL_ARRAY_BUFFER, particles_position_buffer);
 		glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW); // Buffer orphaning, a common way to improve streaming perf. See above link for details.
-		glBufferSubData(GL_ARRAY_BUFFER, 0, ParticlesCount * sizeof(GLfloat) * 4, g_particule_position_size_data);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, nextParticle * sizeof(GLfloat) * 4, g_particule_position_size_data);
 
 		glBindBuffer(GL_ARRAY_BUFFER, particles_color_buffer);
 		glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLubyte), NULL, GL_STREAM_DRAW); // Buffer orphaning, a common way to improve streaming perf. See above link for details.
-		glBufferSubData(GL_ARRAY_BUFFER, 0, ParticlesCount * sizeof(GLubyte) * 4, g_particule_color_data);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, nextParticle * sizeof(GLubyte) * 4, g_particule_color_data);
 
 
 		glEnable(GL_BLEND);
@@ -388,7 +388,7 @@ int main(void)
 		// This is equivalent to :
 		// for(i in ParticlesCount) : glDrawArrays(GL_TRIANGLE_STRIP, 0, 4), 
 		// but faster.
-		glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, ParticlesCount);
+		glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, nextParticle);
 
 		glDisableVertexAttribArray(0);
 		glDisableVertexAttribArray(1);
