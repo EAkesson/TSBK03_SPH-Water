@@ -125,6 +125,7 @@
   <ItemGroup>
     <ClCompile Include="Externals\controls.cpp" />
     <ClCompile Include="Externals\GL_utilities.c" />
+    <ClCompile Include="Externals\loadobj.c" />
     <ClCompile Include="Externals\texture.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Particle.cpp" />
@@ -132,6 +133,7 @@
   <ItemGroup>
     <ClInclude Include="Externals\controls.hpp" />
     <ClInclude Include="Externals\GL_utilities.h" />
+    <ClInclude Include="Externals\loadobj.h" />
     <ClInclude Include="Externals\texture.hpp" />
     <ClInclude Include="Particle.h" />
   </ItemGroup>
