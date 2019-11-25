@@ -207,7 +207,7 @@ void generateNewParticles(double *delta) {
 	}
 }
 
-void runFBO(GLuint shader, FBOstruct *in1, FBOstruct *in2, FBOstruct *out) {
+void runFBO(GLuint shader, FBOstruct *in1, FBOstruct *in2, FBOstruct *out, bool isBigTexture)/*in1 = pos in2 = velocity*/ {
 	glUseProgram(shader);
 
 	// Many of these things would be more efficiently done once and for all
@@ -215,12 +215,33 @@ void runFBO(GLuint shader, FBOstruct *in1, FBOstruct *in2, FBOstruct *out) {
 	glDisable(GL_DEPTH_TEST);
 	glUniform1i(glGetUniformLocation(shader, "texUnit"), 0);
 	glUniform1i(glGetUniformLocation(shader, "texUnit2"), 1);
-	glUniform1f(glGetUniformLocation(shader, "texSize"), W); //??
+	if (isBigTexture) {
+		glUniform1f(glGetUniformLocation(shader, "texSize_W"), WindowWidth);
+		glUniform1f(glGetUniformLocation(shader, "texSize_H"), WindowHeight);
+	}
+	else 
+	{
+		glUniform1i(glGetUniformLocation(shader, "texSize_W"), textureSize);
+		glUniform1i(glGetUniformLocation(shader, "texSize_H"), textureSize);
+	}
+
+	
 
 	useFBO(out, in1, in2);
 	DrawModel(squareModel, shader, "in_Position", NULL, "in_TexCoord");
 
 	glFlush();
+}
+
+void display() {
+	double lastTime = glfwGetTime();
+
+	while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && 
+		glfwWindowShouldClose(window) == 0)
+	{
+
+	}
+
 }
 
 int main(void)
@@ -240,7 +261,14 @@ int main(void)
 
 	initShaders();
 	initFBOs();
-	
+
+	squareModel = LoadDataToModel(
+		square, NULL, squareTexCoord, NULL,
+		squareIndices, 4, 6);
+
+	display();
+
+	/*
 	//GLuint VertexArrayID;
 	//glGenVertexArrays(1, &VertexArrayID);
 	//glBindVertexArray(VertexArrayID);
@@ -465,7 +493,7 @@ int main(void)
 	//glDeleteProgram(programID);
 	//glDeleteTextures(1, &Texture);
 	//glDeleteVertexArrays(1, &VertexArrayID);
-
+	*/
 
 	// Close OpenGL window and terminate GLFW
 	glfwTerminate();
