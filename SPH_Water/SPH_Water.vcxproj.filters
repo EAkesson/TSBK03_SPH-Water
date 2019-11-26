@@ -55,10 +55,16 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Particle.frag">
+    <None Include="Shaders\initPartTex.frag">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Particle.vert">
+    <None Include="Shaders\initPartTex.vert">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Particle.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Particle.vert">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

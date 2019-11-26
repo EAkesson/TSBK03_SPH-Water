@@ -18,6 +18,7 @@ using namespace glm;
 
 #include "Externals/GL_utilities.h"
 #include "Externals/loadobj.h"
+//#include "Externals/LittleOBJLoader.h"
 #include "Externals/texture.hpp"
 #include "Externals/controls.hpp"
 
@@ -56,7 +57,7 @@ Model* squareModel;
 
 //----------------------Globals-------------------------------------------------
 FBOstruct *fboVelocity1, *fboVelocity2, *fboPos1, *fboPos2, *fboScreen;
-GLuint physicShader = 0, renderShader = 0;
+GLuint physicShader = 0, renderShader = 0, initPartTexShader = 0;
 
 // For fps counter
 double lastTime = 0.0;
@@ -65,8 +66,8 @@ int nbFrames = 0;
 const int MaxParticles = 10000;
 Particle ParticlesContainer[MaxParticles];
 int nextParticle = 0;
-const int WindowWidth = 1024;
-const int WindowHeight = 768;
+const int WindowWidth = 4000;
+const int WindowHeight = 4000;
 const int textureSize = 4000;
 //---------------------------------------------------------------------------
 
@@ -157,7 +158,8 @@ bool initProgram() {
 }
 
 void initShaders() {
-	physicShader = loadShaders("plaintextureshader.vert", "plaintextureshader.frag");
+	//physicShader = loadShaders("plaintextureshader.vert", "plaintextureshader.frag");
+	initPartTexShader = loadShaders("Shaders/initPartTex.vert", "Shaders/initPartTex.frag");
 }
 
 void initFBOs() {
@@ -215,7 +217,7 @@ void runFBO(GLuint shader, FBOstruct *in1, FBOstruct *in2, FBOstruct *out, bool 
 	glDisable(GL_DEPTH_TEST);
 	glUniform1i(glGetUniformLocation(shader, "texUnit"), 0);
 	glUniform1i(glGetUniformLocation(shader, "texUnit2"), 1);
-	if (isBigTexture) {
+	if (!isBigTexture) {
 		glUniform1f(glGetUniformLocation(shader, "texSize_W"), WindowWidth);
 		glUniform1f(glGetUniformLocation(shader, "texSize_H"), WindowHeight);
 	}
@@ -236,19 +238,47 @@ void runFBO(GLuint shader, FBOstruct *in1, FBOstruct *in2, FBOstruct *out, bool 
 void display() {
 	double lastTime = glfwGetTime();
 
-	while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && 
-		glfwWindowShouldClose(window) == 0)
-	{
 
-	}
+	//Init texture?
+	glUseProgram(initPartTexShader);
+
+	// Many of these things would be more efficiently done once and for all
+	glDisable(GL_CULL_FACE);
+	glDisable(GL_DEPTH_TEST);
+	glUniform1i(glGetUniformLocation(initPartTexShader, "texUnit"), 0);
+	glUniform1i(glGetUniformLocation(initPartTexShader, "texUnit2"), 1);		
+	glUniform1f(glGetUniformLocation(initPartTexShader, "texSize_W"), textureSize); //Dont need here
+	glUniform1f(glGetUniformLocation(initPartTexShader, "texSize_H"), textureSize); //Dont need here
+	useFBO(0L, fboPos1, 0L);
+	DrawModel(squareModel, initPartTexShader, "in_Position", NULL, "in_TexCoord");
+	glFlush();
+
+
+	//runFBO(initPartTexShader, fboPos1, 0L, 0L, true);
+	//spawn particles?
+
+	do
+	{
+		
+		printf("%s", "HEEEEEEEJ|");
+		//Calc new speed/forces
+		//move particles
+		//move force pos to particle pos
+		//draw
+
+	} while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
+		glfwWindowShouldClose(window) == 0);
 
 }
 
 int main(void)
 {
+	
 	//initProgram
 	if (!initProgram())
 		return -1;
+
+	dumpInfo(); //shaderinfo???
 
 	// Dark grey background
 	glClearColor(0.1f, 0.1f, 0.1f, 0.0f);

@@ -14,15 +14,35 @@ extern "C" {
 	#include <GL/gl.h>
 #endif
 
+//#include "VectorUtils3.h"
+
 // How many error messages do you want before it stops?
 #define NUM_DRAWMODEL_ERROR 8
 
+typedef struct Mtl
+{
+	char newmtl[255];
+	
+	vec3 Ka, Kd, Ks, Ke;
+	// I have also seen vec3's named Tf and a float called Ni in one file. What is that?
+	// Tf = transmission filter
+	// Ni = optical_density
+	GLfloat Ns, Tr, d; // Tr = 1-d
+	int illum;	// illumination model 0..10
+	char map_Ka[255], map_Kd[255], map_Ks[255], map_Ke[255], map_Ns[255], map_d[255], map_bump[255];
+	
+	// NEW for texture support
+	int texidKa, texidKd, texidKs, texidKe, texidNs, texid_d, texid_bump; // References to loaded textures!
+	// refl -type not supported -o for options? A whole bunch.
+	// Extensions for physically based rendering not supported
+} Mtl, *MtlPtr, **MtlHandle;
+
 typedef struct
 {
-  GLfloat* vertexArray;
-  GLfloat* normalArray;
-  GLfloat* texCoordArray;
-  GLfloat* colorArray; // Rarely used
+  vec3* vertexArray;
+  vec3* normalArray;
+  vec2* texCoordArray;
+  vec3* colorArray; // Rarely used
   GLuint* indexArray;
   int numVertices;
   int numIndices;
@@ -30,28 +50,21 @@ typedef struct
   // Space for saving VBO and VAO IDs
   GLuint vao; // VAO
   GLuint vb, ib, nb, tb; // VBOs
+  
+  Mtl *material;
 } Model;
 
 // Basic model loading
+#define LoadModelPlus LoadModel
+Model* LoadModel(const char* name); // Load OBJ as single Model
+Model** LoadModelSet(const char* name);  // Multi-part OBJ!
 
-Model* LoadModel(const char* name); // Old version, single part OBJ only!
-Model** LoadModel2(const char* name); // Multi-part OBJ!
-
-// Extended, load model and upload to arrays!
-// DrawModel is for drawing such preloaded models.
-
+// Drawing models
 void DrawModel(Model *m, GLuint program, const char* vertexVariableName, const char* normalVariableName, const char* texCoordVariableName);
 void DrawWireframeModel(Model *m, GLuint program, const char* vertexVariableName, const char* normalVariableName, const char* texCoordVariableName);
 
-Model* LoadModelPlus(const char* name);
-Model** LoadModel2Plus(const char* name);
-
 // Utility functions that you may need if you want to modify the model.
 
-void EnableModelForShader(Model *m, GLuint program, // NOT TESTED
-			char* vertexVariableName,
-			char* normalVariableName,
-			char* texCoordVariableName);
 Model* LoadDataToModel(
 			GLfloat *vertices,
 			GLfloat *normals,

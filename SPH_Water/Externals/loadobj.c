@@ -576,12 +576,10 @@ static struct Mesh * LoadOBJ(const char *filename)
 void DecomposeToTriangles(struct Mesh *theMesh)
 {
 	int i, vertexCount, triangleCount;
-	int *newCoords, *newNormalsIndex, *newTextureIndex;
+	int *newCoords, *newNormalsIndex=-1, *newTextureIndex=-1;
 	int newIndex = 0; // Index in newCoords
 	int first = 0;
 
-	newNormalsIndex = 0;
-	newTextureIndex = 0;
 	// 1. Bygg om hela modellen till trianglar
 	// 1.1 Calculate how big the list will become
 	
@@ -1173,7 +1171,10 @@ void DrawModel(Model *m, GLuint program, const char* vertexVariableName, const c
 		glBindVertexArray(m->vao);	// Select VAO
 
 		glBindBuffer(GL_ARRAY_BUFFER, m->vb);
+
 		loc = glGetAttribLocation(program, vertexVariableName);
+
+		printf("%s%i", "hej ", loc);		
 		if (loc >= 0)
 		{
 			glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, 0, 0); 
@@ -1199,6 +1200,7 @@ void DrawModel(Model *m, GLuint program, const char* vertexVariableName, const c
 		if ((m->texCoordArray != NULL)&&(texCoordVariableName != NULL))
 		{
 			loc = glGetAttribLocation(program, texCoordVariableName);
+			printf("%s%i", "hej2 ", loc);			
 			if (loc >= 0)
 			{
 				glBindBuffer(GL_ARRAY_BUFFER, m->tb);
