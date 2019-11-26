@@ -5,12 +5,14 @@ in vec2 UV;
 in vec4 particlecolor;
 
 // Ouput data
-out vec4 color;
+out vec4 particlePos;
+out vec4 particleVel;
 
-uniform sampler2D myTextureSampler;
+uniform sampler2D posTex;
+uniform sampler2D velTex;
 
 void main(){
 	// Output color = color of the texture at the specified UV
-	color = texture( myTextureSampler, UV ) * particlecolor;
+	particlePos = texture( posTex, UV ) * particlecolor;
 
 }

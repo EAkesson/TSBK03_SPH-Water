@@ -60,6 +60,39 @@ void calcFPS()
 	}
 }
 
+
+// Create pos and vel textures
+// Not done but maybe a good foundation
+#define imageSizeWidth 4000
+#define imageSizeHeight 4000
+#define blocksizeWidth 500
+#define blocksizeHeight 500
+static GLubyte posTexture[imageSizeHeight][imageSizeWidth][4];
+static GLubyte velTexture[imageSizeHeight][imageSizeWidth][4];
+
+void initTexture()
+{
+	int x, y;
+
+	for (x = 1; x+2 < imageSizeWidth-1; x+2)
+	{
+		for (y = 1; y+2 < imageSizeHeight-1; y+2)
+		{
+			Particle part = Particle();
+			// New particle
+			posTexture[x][y][0] = static_cast<GLubyte>(part.pos.x);
+			posTexture[x][y][1] = static_cast<GLubyte>(part.pos.y);
+			posTexture[x][y][2] = static_cast<GLubyte>(part.pos.z);
+			posTexture[x][y][3] = static_cast<GLubyte>(part.a);
+
+			velTexture[x][y][0] = static_cast<GLubyte>(part.speed.x);
+			velTexture[x][y][1] = static_cast<GLubyte>(part.speed.y);
+			velTexture[x][y][2] = static_cast<GLubyte>(part.speed.z);
+			velTexture[x][y][3] = static_cast<GLubyte>(part.a);
+		}
+	}
+}
+
 const int MaxParticles = 10000;
 Particle ParticlesContainer[MaxParticles];
 int nextParticle = 0;
@@ -202,13 +235,14 @@ int main(void)
 	GLuint ViewProjMatrixID = glGetUniformLocation(programID, "VP");
 
 	// fragment shader
-	GLuint TextureID = glGetUniformLocation(programID, "myTextureSampler");
+	GLuint PosTexID = glGetUniformLocation(programID, "posTex");
+	GLuint VelTexID = glGetUniformLocation(programID, "velTex");
 
 
 	static GLfloat* g_particule_position_size_data = new GLfloat[MaxParticles * 4];
 	static GLubyte* g_particule_color_data = new GLubyte[MaxParticles * 4];
 
-	for (int i = 0; i < MaxParticles; i++) {		
+	for (int i = 0; i < MaxParticles; i++) {
 		ParticlesContainer[i].cameradistance = -1.0f;
 	}
 
@@ -331,7 +365,12 @@ int main(void)
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, Texture);
 		// Set our "myTextureSampler" sampler to use Texture Unit 0
-		glUniform1i(TextureID, 0);
+		glUniform1i(PosTexID, 0);
+
+		// Bind vel texure?
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, Texture);
+		glUniform1i(VelTexID, 1);
 
 		// Same as the billboards tutorial
 		glUniform3f(CameraRight_worldspace_ID, ViewMatrix[0][0], ViewMatrix[1][0], ViewMatrix[2][0]);
