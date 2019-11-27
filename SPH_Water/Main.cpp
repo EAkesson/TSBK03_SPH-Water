@@ -66,9 +66,9 @@ int nbFrames = 0;
 const int MaxParticles = 10000;
 Particle ParticlesContainer[MaxParticles];
 int nextParticle = 0;
-const int WindowWidth = 4000;
-const int WindowHeight = 4000;
-const int textureSize = 4000;
+const int WindowWidth = 512;
+const int WindowHeight = 512;
+const int textureSize = 512;
 //---------------------------------------------------------------------------
 
 void calcFPS()
@@ -240,18 +240,10 @@ void display() {
 
 
 	//Init texture?
-	glUseProgram(initPartTexShader);
 
-	// Many of these things would be more efficiently done once and for all
-	glDisable(GL_CULL_FACE);
-	glDisable(GL_DEPTH_TEST);
-	glUniform1i(glGetUniformLocation(initPartTexShader, "texUnit"), 0);
-	glUniform1i(glGetUniformLocation(initPartTexShader, "texUnit2"), 1);		
-	glUniform1f(glGetUniformLocation(initPartTexShader, "texSize_W"), textureSize); //Dont need here
-	glUniform1f(glGetUniformLocation(initPartTexShader, "texSize_H"), textureSize); //Dont need here
-	useFBO(0L, fboPos1, 0L);
-	DrawModel(squareModel, initPartTexShader, "in_Position", NULL, "in_TexCoord");
-	glFlush();
+	
+
+
 
 
 	//runFBO(initPartTexShader, fboPos1, 0L, 0L, true);
@@ -259,14 +251,30 @@ void display() {
 
 	do
 	{
+		glUseProgram(initPartTexShader);
+
+		// Many of these things would be more efficiently done once and for all
+		glDisable(GL_CULL_FACE);
+		glDisable(GL_DEPTH_TEST);
+		glUniform1i(glGetUniformLocation(initPartTexShader, "texUnit"), 0);
+		glUniform1i(glGetUniformLocation(initPartTexShader, "texUnit2"), 1);
+		glUniform1f(glGetUniformLocation(initPartTexShader, "texSize_W"), WindowWidth); //Dont need here
+		glUniform1f(glGetUniformLocation(initPartTexShader, "texSize_H"), WindowWidth); //Dont need here
+		useFBO(0L, fboScreen, 0L);
+		DrawModel(squareModel, initPartTexShader, "in_Position", NULL, "in_TexCoord");
+		glFlush();
 		
-		printf("%s", "HEEEEEEEJ|");
+		// Swap buffers
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+		//printf("%s", "HEEEEEEEJ|");
 		//Calc new speed/forces
 		//move particles
 		//move force pos to particle pos
 		//draw
 
-	} while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
+	} // Check if the ESC key was pressed or the window was closed
+	while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
 		glfwWindowShouldClose(window) == 0);
 
 }
@@ -281,7 +289,7 @@ int main(void)
 	dumpInfo(); //shaderinfo???
 
 	// Dark grey background
-	glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
+	glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
 	glClearDepth(1.0);
 	// Enable depth test
 	glEnable(GL_DEPTH_TEST);
