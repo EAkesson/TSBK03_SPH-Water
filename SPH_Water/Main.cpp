@@ -57,7 +57,7 @@ Model* squareModel;
 
 //----------------------Globals-------------------------------------------------
 FBOstruct *fboVelocity1, *fboVelocity2, *fboPos1, *fboPos2, *fboScreen;
-GLuint physicShader = 0, renderShader = 0, initPartTexShader = 0;
+GLuint physicShader = 0, renderShader = 0, initPartTexShader = 0, spawnParticlesShader = 0;
 
 // For fps counter
 double lastTime = 0.0;
@@ -69,7 +69,41 @@ int nextParticle = 0;
 const int WindowWidth = 4000;
 const int WindowHeight = 4000;
 const int textureSize = 4000;
+static GLbyte posTexture[textureSize][textureSize][4];
+static GLuint posTexName;
 //---------------------------------------------------------------------------
+
+void spawnParticle(int numParticles)
+{
+	int x, y, z;
+
+	for (int i = 0; i < numParticles; ++i)
+	{
+		// x: 3->8, y: 12->15, z: 2->8
+		int xRel = 3 + (rand() % (8 - 3 + 1));
+		int yRel = 12 + (rand() % (15 - 12 + 1));
+		int zRel = 2 + (rand() % (8 - 2 + 1));
+		z = (zRel / 10) * 63;
+		x = (xRel / 15) * 499 + (z - floor(z / 8) * 8) * 500;
+		y = (yRel / 20) * 499 + floor(z / 8) * 500;
+
+		// Random velocity in any direction [-LO, HI]
+		float HI = 1.0f, LO = -1.0f;
+		vec3 vel = vec3(
+			LO + static_cast<float>(rand()) / static_cast<float>(RAND_MAX / (HI - LO)),
+			LO + static_cast<float>(rand()) / static_cast<float>(RAND_MAX / (HI - LO)),
+			LO + static_cast<float>(rand()) / static_cast<float>(RAND_MAX / (HI - LO))
+		);
+
+		//printf("x%f, y%f, z%f \n", vel.x, vel.y, vel.z);
+
+		// New particle
+		posTexture[x][y][0] = static_cast<GLubyte>(vel.x);
+		posTexture[x][y][1] = static_cast<GLubyte>(vel.y);
+		posTexture[x][y][2] = static_cast<GLubyte>(vel.z);
+		posTexture[x][y][3] = static_cast<GLubyte>(1);
+	}
+}
 
 void calcFPS()
 {
@@ -154,19 +188,21 @@ bool initProgram() {
 	if (!initGlew())
 		return false;
 
+	//posTexture = new GLbyte[textureSize][textureSize][4];
 	return true;
 }
 
 void initShaders() {
 	//physicShader = loadShaders("plaintextureshader.vert", "plaintextureshader.frag");
 	initPartTexShader = loadShaders("Shaders/initPartTex.vert", "Shaders/initPartTex.frag");
+	spawnParticlesShader = loadShaders("Shaders/spawnParticles.vert", "Shaders/spawnParticles.frag");
 }
 
 void initFBOs() {
 	fboVelocity1 = initFBO(textureSize, textureSize, 0);
-	fboVelocity1 = initFBO(textureSize, textureSize, 0);
-	fboPos1 = initFBO(textureSize, textureSize, 0);
-	fboPos1 = initFBO(textureSize, textureSize, 0);
+	//fboVelocity1 = initFBO(textureSize, textureSize, 0);
+	fboPos1 = initFBOTexture(textureSize, textureSize, 0, **posTexture);
+	fboPos2 = initFBO(textureSize, textureSize, 0);
 	fboScreen = initFBO(WindowWidth, WindowHeight, 0);
 }
 
@@ -240,19 +276,21 @@ void display() {
 
 
 	//Init texture?
-	glUseProgram(initPartTexShader);
+	//useFBO(fboPos1, 0L, 0L);
+	glUseProgram(spawnParticlesShader);
 
 	// Many of these things would be more efficiently done once and for all
 	glDisable(GL_CULL_FACE);
 	glDisable(GL_DEPTH_TEST);
-	glUniform1i(glGetUniformLocation(initPartTexShader, "texUnit"), 0);
-	glUniform1i(glGetUniformLocation(initPartTexShader, "texUnit2"), 1);		
-	glUniform1f(glGetUniformLocation(initPartTexShader, "texSize_W"), textureSize); //Dont need here
-	glUniform1f(glGetUniformLocation(initPartTexShader, "texSize_H"), textureSize); //Dont need here
-	useFBO(0L, fboPos1, 0L);
-	DrawModel(squareModel, initPartTexShader, "in_Position", NULL, "in_TexCoord");
+	glUniform1i(glGetUniformLocation(spawnParticlesShader, "texUnit1"), 0);
+	glUniform1i(glGetUniformLocation(spawnParticlesShader, "texUnit2"), 1);
+	glUniform1i(glGetUniformLocation(spawnParticlesShader, "texSize"), textureSize);
+	useFBO(fboPos1, fboPos1, fboPos1);
+	DrawModel(squareModel, spawnParticlesShader, "in_Position", NULL, "in_TexCoord");
 	glFlush();
-
+	glfwSwapBuffers(window);
+	glfwPollEvents();
+	
 
 	//runFBO(initPartTexShader, fboPos1, 0L, 0L, true);
 	//spawn particles?
@@ -260,7 +298,7 @@ void display() {
 	do
 	{
 		
-		printf("%s", "HEEEEEEEJ|");
+		//printf("%s", "HEEEEEEEJ|");
 		//Calc new speed/forces
 		//move particles
 		//move force pos to particle pos
@@ -296,6 +334,8 @@ int main(void)
 		square, NULL, squareTexCoord, NULL,
 		squareIndices, 4, 6);
 
+	spawnParticle(1000);
+	
 	display();
 
 

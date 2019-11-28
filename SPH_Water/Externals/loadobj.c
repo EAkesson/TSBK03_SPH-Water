@@ -1174,7 +1174,7 @@ void DrawModel(Model *m, GLuint program, const char* vertexVariableName, const c
 
 		loc = glGetAttribLocation(program, vertexVariableName);
 
-		printf("%s%i", "hej ", loc);		
+		//printf("%s%i", "hej ", loc);		
 		if (loc >= 0)
 		{
 			glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, 0, 0); 
@@ -1200,7 +1200,7 @@ void DrawModel(Model *m, GLuint program, const char* vertexVariableName, const c
 		if ((m->texCoordArray != NULL)&&(texCoordVariableName != NULL))
 		{
 			loc = glGetAttribLocation(program, texCoordVariableName);
-			printf("%s%i", "hej2 ", loc);			
+			//printf("%s%i", "hej2 ", loc);			
 			if (loc >= 0)
 			{
 				glBindBuffer(GL_ARRAY_BUFFER, m->tb);
