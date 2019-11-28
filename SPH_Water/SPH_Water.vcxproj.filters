@@ -67,5 +67,23 @@
     <None Include="Shaders\Particle.vert">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\physics.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\physics.vert">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\calcNewPos.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\calcNewPos.vert">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\simpelDraw.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\simpelDraw.vert">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

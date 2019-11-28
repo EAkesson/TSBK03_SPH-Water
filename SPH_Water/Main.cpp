@@ -56,8 +56,8 @@ Model* squareModel;
 
 
 //----------------------Globals-------------------------------------------------
-FBOstruct *fboVelocity1, *fboVelocity2, *fboPos1, *fboPos2, *fboScreen;
-GLuint physicShader = 0, renderShader = 0, initPartTexShader = 0;
+FBOstruct *fboParticle1, *fboParticle2, *fboScreen;
+GLuint physicShader = 0, renderShader = 0, initPartTexShader = 0, calcNewPosShader = 0, simpelDrawShader=0;
 
 // For fps counter
 double lastTime = 0.0;
@@ -66,9 +66,9 @@ int nbFrames = 0;
 const int MaxParticles = 10000;
 Particle ParticlesContainer[MaxParticles];
 int nextParticle = 0;
-const int WindowWidth = 512;
-const int WindowHeight = 512;
-const int textureSize = 512;
+const int WindowWidth = 4000;
+const int WindowHeight = 4000;
+const int textureSize = 4000;
 //---------------------------------------------------------------------------
 
 void calcFPS()
@@ -123,11 +123,11 @@ bool initGLFW() {
 	// Ensure we can capture the escape key being pressed below
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 	// Hide the mouse and enable unlimited movement
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	// Set the mouse at the center of the screen
-	glfwPollEvents();
-	glfwSetCursorPos(window, WindowWidth / 2, WindowHeight / 2);
+		//glfwPollEvents();
+		//glfwSetCursorPos(window, WindowWidth / 2, WindowHeight / 2);
 
 	return true;
 }
@@ -160,13 +160,14 @@ bool initProgram() {
 void initShaders() {
 	//physicShader = loadShaders("plaintextureshader.vert", "plaintextureshader.frag");
 	initPartTexShader = loadShaders("Shaders/initPartTex.vert", "Shaders/initPartTex.frag");
+	physicShader = loadShaders("Shaders/physics.vert", "Shaders/physics.frag");
+	calcNewPosShader = loadShaders("Shaders/calcNewPos.vert", "Shaders/calcNewPos.frag");
+	simpelDrawShader = loadShaders("Shaders/simpelDraw.vert", "Shaders/simpelDraw.frag");
 }
 
 void initFBOs() {
-	fboVelocity1 = initFBO(textureSize, textureSize, 0);
-	fboVelocity1 = initFBO(textureSize, textureSize, 0);
-	fboPos1 = initFBO(textureSize, textureSize, 0);
-	fboPos1 = initFBO(textureSize, textureSize, 0);
+	fboParticle1 = initFBO(textureSize, textureSize, 0);
+	fboParticle2 = initFBO(textureSize, textureSize, 0);	
 	fboScreen = initFBO(WindowWidth, WindowHeight, 0);
 }
 
@@ -235,38 +236,84 @@ void runFBO(GLuint shader, FBOstruct *in1, FBOstruct *in2, FBOstruct *out, bool 
 	glFlush();
 }
 
+void renderTexure(GLuint shader, FBOstruct *in1, FBOstruct *in2) {
+	glUseProgram(shader);
+	// Many of these things would be more efficiently done once and for all
+	glDisable(GL_CULL_FACE);
+	glDisable(GL_DEPTH_TEST);
+	glUniform1i(glGetUniformLocation(shader, "texUnit0"), 0);
+	glUniform1i(glGetUniformLocation(shader, "texUnit1"), 1);
+	glUniform1f(glGetUniformLocation(shader, "texSize"), WindowWidth); //Dont need here
+	glUniform1f(glGetUniformLocation(shader, "texSize_H"), WindowWidth); //Dont need here
+	useFBO(0L, in1, in2);
+	DrawModel(squareModel, shader, "in_Position", NULL, "in_TexCoord");
+	glFlush();
+}
+
 void display() {
-	double lastTime = glfwGetTime();
 
 
 	//Init texture?
-
-	
-
-
-
-
-	//runFBO(initPartTexShader, fboPos1, 0L, 0L, true);
-	//spawn particles?
-
-	do
-	{
+		useFBO(fboParticle1, 0L, 0L);
 		glUseProgram(initPartTexShader);
-
 		// Many of these things would be more efficiently done once and for all
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
-		glUniform1i(glGetUniformLocation(initPartTexShader, "texUnit"), 0);
-		glUniform1i(glGetUniformLocation(initPartTexShader, "texUnit2"), 1);
+		glUniform1i(glGetUniformLocation(initPartTexShader, "texUnit0"), 0);
+		glUniform1i(glGetUniformLocation(initPartTexShader, "texUnit1"), 1);
 		glUniform1f(glGetUniformLocation(initPartTexShader, "texSize_W"), WindowWidth); //Dont need here
 		glUniform1f(glGetUniformLocation(initPartTexShader, "texSize_H"), WindowWidth); //Dont need here
-		useFBO(0L, fboScreen, 0L);
+		
 		DrawModel(squareModel, initPartTexShader, "in_Position", NULL, "in_TexCoord");
 		glFlush();
+
 		
-		// Swap buffers
-		glfwSwapBuffers(window);
-		glfwPollEvents();
+
+	//runFBO(initPartTexShader, fboPos1, 0L, 0L, true);
+	//spawn particles?
+	int framenum = 0;
+	//double lastTime = glfwGetTime();
+	do
+	{
+		double currentTime = glfwGetTime();
+		float delta = (float) currentTime - lastTime;
+		lastTime = currentTime;
+		
+		if (framenum % 1000 == 0) {
+			printf("%s", "hej");
+			glUseProgram(physicShader);
+			// Many of these things would be more efficiently done once and for all
+			glDisable(GL_CULL_FACE);
+			glDisable(GL_DEPTH_TEST);
+			glUniform1i(glGetUniformLocation(physicShader, "texUnit"), 0);
+			glUniform1i(glGetUniformLocation(physicShader, "texUnit2"), 1);
+			glUniform1f(glGetUniformLocation(physicShader, "texSize_W"), WindowWidth); //Dont need here
+			glUniform1f(glGetUniformLocation(physicShader, "texSize_H"), WindowWidth); //Dont need here
+			glUniform1f(glGetUniformLocation(physicShader, "deltaTime"), delta);
+			useFBO(fboParticle2, fboParticle1, 0L);
+			DrawModel(squareModel, initPartTexShader, "in_Position", NULL, "in_TexCoord");
+			glFlush();
+
+			glUseProgram(simpelDrawShader);
+			// Many of these things would be more efficiently done once and for all
+			glDisable(GL_CULL_FACE);
+			glDisable(GL_DEPTH_TEST);
+			glUniform1i(glGetUniformLocation(simpelDrawShader, "texUnit"), 0);
+			glUniform1i(glGetUniformLocation(simpelDrawShader, "texUnit2"), 1);
+			glUniform1f(glGetUniformLocation(simpelDrawShader, "texSize_W"), WindowWidth); //Dont need here
+			glUniform1f(glGetUniformLocation(simpelDrawShader, "texSize_H"), WindowWidth); //Dont need here
+			glUniform1f(glGetUniformLocation(simpelDrawShader, "deltaTime"), delta);
+			useFBO(fboParticle1, fboParticle2, 0L);
+			DrawModel(squareModel, simpelDrawShader, "in_Position", NULL, "in_TexCoord");
+			glFlush();
+
+			renderTexure(simpelDrawShader, fboParticle2, 0L);
+
+			glfwSwapBuffers(window);
+			glfwPollEvents();
+			
+		}
+		//framenum++;
 		//printf("%s", "HEEEEEEEJ|");
 		//Calc new speed/forces
 		//move particles
