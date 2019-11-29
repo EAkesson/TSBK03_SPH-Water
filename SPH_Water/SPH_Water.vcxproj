@@ -148,6 +148,8 @@
     <None Include="Shaders\physics.vert" />
     <None Include="Shaders\simpelDraw.frag" />
     <None Include="Shaders\simpelDraw.vert" />
+    <None Include="Shaders\spawnParticles.frag" />
+    <None Include="Shaders\spawnParticles.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

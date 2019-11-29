@@ -85,5 +85,11 @@
     <None Include="Shaders\simpelDraw.vert">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\spawnParticles.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\spawnParticles.vert">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>
