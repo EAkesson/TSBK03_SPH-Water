@@ -97,40 +97,64 @@ void calcFPS()
 	std::sort(&ParticlesContainer[0], &ParticlesContainer[MaxParticles]);
 }*/
 
+void initTexture() {
+	for (size_t x = 0; x < 4000; x++)
+	{
+		for (size_t y = 0; y < 4000; y++)
+		{
+			posTexture[x][y][0] = static_cast<GLbyte>(0.0);
+			posTexture[x][y][1] = static_cast<GLbyte>(0.0);
+			posTexture[x][y][2] = static_cast<GLbyte>(0.0);
+			posTexture[x][y][3] = static_cast<GLbyte>(0.0);
+		}
+	}
+}
+
 void spawnParticle(int numParticles)
 {
-	int x, y, z;
-
+	int x, y;
+	float z;
 	for (int i = 0; i < numParticles; ++i)
 	{
 		// x: 3->8, y: 12->15, z: 2->8
-		int xRel = 3 + (rand() % (8 - 3 + 1));
-		int yRel = 12 + (rand() % (15 - 12 + 1));
-		int zRel = 2 + (rand() % (8 - 2 + 1));
-		z = (zRel / 10) * 63;
-		x = (xRel / 15) * 499 + (z - floor(z / 8) * 8) * 500;
-		y = (yRel / 20) * 499 + floor(z / 8) * 500;
+		/*float  xRel = 3 + (rand() % (8 - 3 + 1));
+		float yRel = 12 + (rand() % (15 - 12 + 1));
+		float zRel = 2 + (rand() % (8 - 2 + 1));*/
+		
 
-		// Random velocity in any direction [-LO, HI]
-		float HI = 1.0f, LO = -1.0f;
-		vec3 vel = vec3(1.0, 0.0, 0.0);/*
+		float xL = 3.0, xH = 8.0f;
+		float yL = 12.0f, yH = 15.0f;
+		float zL = 2.0f, zH = 8.0f;
+		vec3 pos = vec3(
+			xL + static_cast<float>(rand()) / static_cast<float>(RAND_MAX / (xH - xL)),
+			yL + static_cast<float>(rand()) / static_cast<float>(RAND_MAX / (yH - yL)),
+			zL + static_cast<float>(rand()) / static_cast<float>(RAND_MAX / (zH - zL))
+		);
+
+		z = floor(((pos.z / 10.0) * 63.0));
+		x = (int)((pos.x / 15.0) * 499.0 + (z - floor(z / 8.0) * 8.0) * 500.0);
+		y = (int)((pos.y / 20.0) * 499.0 + floor(z / 8.0) * 500.0);
+
+		//Random velocity in any direction [-LO, HI]
+		float HI = 255.0f, LO = -255.0f;
+		vec3 vel = vec3(
 			LO + static_cast<float>(rand()) / static_cast<float>(RAND_MAX / (HI - LO)),
 			LO + static_cast<float>(rand()) / static_cast<float>(RAND_MAX / (HI - LO)),
 			LO + static_cast<float>(rand()) / static_cast<float>(RAND_MAX / (HI - LO))
-		);*/
+		);
 
-		//printf("x%f, y%f, z%f \n", vel.x, vel.y, vel.z);
+		//printf("x%i, y%i \n", x, y);
 
 		// New particle
-		/*posTexture[x][y][0] = static_cast<GLubyte>(vel.x);
-		posTexture[x][y][1] = static_cast<GLubyte>(vel.y);
-		posTexture[x][y][2] = static_cast<GLubyte>(vel.z);
-		posTexture[x][y][3] = static_cast<GLubyte>(1.0);*/
-		posTexture[i][50][0] = static_cast<GLubyte>(vel.x);
-		posTexture[i][50][1] = static_cast<GLubyte>(vel.y);
-		posTexture[i][50][2] = static_cast<GLubyte>(vel.z);
-		posTexture[i][50][3] = static_cast<GLubyte>(1.0);
-	}
+		posTexture[y][x][0] = static_cast<GLubyte>(vel.x);
+		posTexture[y][x][1] = static_cast<GLubyte>(vel.y);
+		posTexture[y][x][2] = static_cast<GLubyte>(vel.z);
+		posTexture[y][x][3] = static_cast<GLubyte>(255.0);
+		/*posTexture[i][i][0] = static_cast<GLbyte>(255.0);
+		posTexture[i][i][1] = static_cast<GLbyte>(255.0);
+		posTexture[i][i][2] = static_cast<GLbyte>(0.0);
+		posTexture[i][i][3] = static_cast<GLbyte>(255.0);*/
+	}	
 }
 
 bool initGLFW() {
@@ -202,18 +226,18 @@ void initShaders() {
 	physicShader = loadShaders("Shaders/physics.vert", "Shaders/physics.frag");
 	calcNewPosShader = loadShaders("Shaders/calcNewPos.vert", "Shaders/calcNewPos.frag");
 	simpelDrawShader = loadShaders("Shaders/simpelDraw.vert", "Shaders/simpelDraw.frag");
-	spawnParticlesShader = loadShaders("Shaders/spawnParticle.vert", "Shaders/spawnParticle.frag");
+	spawnParticlesShader = loadShaders("Shaders/spawnParticles.vert", "Shaders/spawnParticles.frag");
 }
 
 void initFBOs() {
-	fboParticle1 = initFBOTexture(textureSize, textureSize, 0, **posTexture);
+	fboParticle1 = initFBO(textureSize, textureSize, 0);
 	//fboParticle1 = initFBO(textureSize, textureSize, 0);
 	fboParticle2 = initFBO(textureSize, textureSize, 0);	
 	fboScreen = initFBO(WindowWidth, WindowHeight, 0);
 
 }
 
-void runFBO(GLuint shader, FBOstruct *in1, FBOstruct *in2, FBOstruct *out, bool isBigTexture)/*in1 = pos in2 = velocity*/ {
+void runFBO(GLuint shader, FBOstruct *in1, FBOstruct *in2, FBOstruct *out, bool isBigTexture) {
 	glUseProgram(shader);
 
 	// Many of these things would be more efficiently done once and for all
@@ -256,19 +280,34 @@ void renderTexure(GLuint shader, FBOstruct *in1, FBOstruct *in2) {
 void display() {
 
 
-	//Init texture?
-		/*useFBO(fboParticle1, 0L, 0L);
-		glUseProgram(initPartTexShader);
+	//Init texture?		
+		glUseProgram(spawnParticlesShader);
+		useFBO(fboParticle1, 0L, 0L);
 		// Many of these things would be more efficiently done once and for all
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
-		glUniform1i(glGetUniformLocation(initPartTexShader, "texUnit0"), 0);
-		glUniform1i(glGetUniformLocation(initPartTexShader, "texUnit1"), 1);
-		glUniform1f(glGetUniformLocation(initPartTexShader, "texSize_W"), WindowWidth); //Dont need here
-		glUniform1f(glGetUniformLocation(initPartTexShader, "texSize_H"), WindowWidth); //Dont need here
+		glUniform1i(glGetUniformLocation(spawnParticlesShader, "texUnit0"), 0);
+		glUniform1i(glGetUniformLocation(spawnParticlesShader, "texUnit1"), 1);
+		glUniform1f(glGetUniformLocation(spawnParticlesShader, "texSize_W"), WindowWidth); //Dont need here
+		glUniform1f(glGetUniformLocation(spawnParticlesShader, "texSize_H"), WindowWidth); //Dont need here
+
+		glGenTextures(1, &posTexName);
+		glBindTexture(GL_TEXTURE_2D, posTexName);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureSize, textureSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, posTexture);
+		glGenerateMipmap(GL_TEXTURE_2D);		
+		// Bind our texture in Texture Unit 2
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, posTexName);
+		//Set our "myTextureSampler" sampler to use Texture Unit 2
+		glUniform1i(glGetUniformLocation(spawnParticlesShader, "texUnit2"), 2);
 		
-		DrawModel(squareModel, initPartTexShader, "in_Position", NULL, "in_TexCoord");
-		glFlush();*/
+
+		DrawModel(squareModel, spawnParticlesShader, "in_Position", NULL, "in_TexCoord");
+		glFlush();
 
 		
 
@@ -339,7 +378,8 @@ int main(void)
 	// Accept fragment if it closer to the camera than the former one
 	glDepthFunc(GL_LESS);
 
-	spawnParticle(3500);
+	initTexture();
+	spawnParticle(1000);
 	initShaders();
 	initFBOs();
 
