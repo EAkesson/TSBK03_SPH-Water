@@ -78,7 +78,7 @@ void calcFPS()
 	double delta = currentTime - lastTime;
 	nbFrames++;
 	if (delta >= 1.0) { // If last cout was more than 1 sec ago
-		double fps = double(nbFrames) / delta;
+		double fps = static_cast<double>(nbFrames) / delta;
 
 		std::stringstream ss;
 		ss << "SPH_Water, We promise it looks good" << " [" << fps << " FPS]";
@@ -272,53 +272,45 @@ void display() {
 	//runFBO(initPartTexShader, fboPos1, 0L, 0L, true);
 	//spawn particles?
 	int framenum = 0;
-	//double lastTime = glfwGetTime();
+	double TobySucks = glfwGetTime();
 	do
 	{
+		//calcFPS();
+
 		double currentTime = glfwGetTime();
-		float delta = (float) currentTime - lastTime;
-		lastTime = currentTime;
+		float delta = (float) currentTime - TobySucks;
+		TobySucks = currentTime;
 		
-		if (framenum % 1000 == 0) {
-			printf("%s", "hej");
-			glUseProgram(physicShader);
-			// Many of these things would be more efficiently done once and for all
-			glDisable(GL_CULL_FACE);
-			glDisable(GL_DEPTH_TEST);
-			glUniform1i(glGetUniformLocation(physicShader, "texUnit"), 0);
-			glUniform1i(glGetUniformLocation(physicShader, "texUnit2"), 1);
-			glUniform1f(glGetUniformLocation(physicShader, "texSize_W"), WindowWidth); //Dont need here
-			glUniform1f(glGetUniformLocation(physicShader, "texSize_H"), WindowWidth); //Dont need here
-			glUniform1f(glGetUniformLocation(physicShader, "deltaTime"), delta);
-			useFBO(fboParticle2, fboParticle1, 0L);
-			DrawModel(squareModel, initPartTexShader, "in_Position", NULL, "in_TexCoord");
-			glFlush();
+		glUseProgram(physicShader);
+		// Many of these things would be more efficiently done once and for all
+		glDisable(GL_CULL_FACE);
+		glDisable(GL_DEPTH_TEST);
+		glUniform1i(glGetUniformLocation(physicShader, "texUnit"), 0);
+		glUniform1i(glGetUniformLocation(physicShader, "texUnit2"), 1);
+		glUniform1f(glGetUniformLocation(physicShader, "texSize_W"), WindowWidth); //Dont need here
+		glUniform1f(glGetUniformLocation(physicShader, "texSize_H"), WindowWidth); //Dont need here
+		glUniform1f(glGetUniformLocation(physicShader, "deltaTime"), delta);
+		useFBO(fboParticle2, fboParticle1, 0L);
+		DrawModel(squareModel, initPartTexShader, "in_Position", NULL, "in_TexCoord");
+		glFlush();
 
-			glUseProgram(simpelDrawShader);
-			// Many of these things would be more efficiently done once and for all
-			glDisable(GL_CULL_FACE);
-			glDisable(GL_DEPTH_TEST);
-			glUniform1i(glGetUniformLocation(simpelDrawShader, "texUnit"), 0);
-			glUniform1i(glGetUniformLocation(simpelDrawShader, "texUnit2"), 1);
-			glUniform1f(glGetUniformLocation(simpelDrawShader, "texSize_W"), WindowWidth); //Dont need here
-			glUniform1f(glGetUniformLocation(simpelDrawShader, "texSize_H"), WindowWidth); //Dont need here
-			glUniform1f(glGetUniformLocation(simpelDrawShader, "deltaTime"), delta);
-			useFBO(fboParticle1, fboParticle2, 0L);
-			DrawModel(squareModel, simpelDrawShader, "in_Position", NULL, "in_TexCoord");
-			glFlush();
+		glUseProgram(simpelDrawShader);
+		// Many of these things would be more efficiently done once and for all
+		glDisable(GL_CULL_FACE);
+		glDisable(GL_DEPTH_TEST);
+		glUniform1i(glGetUniformLocation(simpelDrawShader, "texUnit"), 0);
+		glUniform1i(glGetUniformLocation(simpelDrawShader, "texUnit2"), 1);
+		glUniform1f(glGetUniformLocation(simpelDrawShader, "texSize_W"), WindowWidth); //Dont need here
+		glUniform1f(glGetUniformLocation(simpelDrawShader, "texSize_H"), WindowWidth); //Dont need here
+		glUniform1f(glGetUniformLocation(simpelDrawShader, "deltaTime"), delta);
+		useFBO(fboParticle1, fboParticle2, 0L);
+		DrawModel(squareModel, simpelDrawShader, "in_Position", NULL, "in_TexCoord");
+		glFlush();
 
-			renderTexure(simpelDrawShader, fboParticle2, 0L);
+		renderTexure(simpelDrawShader, fboParticle2, 0L);
 
-			glfwSwapBuffers(window);
-			glfwPollEvents();
-			
-		}
-		//framenum++;
-		//printf("%s", "HEEEEEEEJ|");
-		//Calc new speed/forces
-		//move particles
-		//move force pos to particle pos
-		//draw
+		glfwSwapBuffers(window);
+		glfwPollEvents();
 
 	} // Check if the ESC key was pressed or the window was closed
 	while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
