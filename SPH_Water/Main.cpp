@@ -335,7 +335,20 @@ void display() {
 		DrawModel(squareModel, initPartTexShader, "in_Position", NULL, "in_TexCoord");
 		glFlush();
 
-		glUseProgram(simpelDrawShader);
+		glUseProgram(calcNewPosShader);
+		// Many of these things would be more efficiently done once and for all
+		glDisable(GL_CULL_FACE);
+		glDisable(GL_DEPTH_TEST);
+		glUniform1i(glGetUniformLocation(calcNewPosShader, "texUnit"), 0);
+		glUniform1i(glGetUniformLocation(calcNewPosShader, "texUnit2"), 1);
+		glUniform1f(glGetUniformLocation(calcNewPosShader, "texSize_W"), WindowWidth); //Dont need here
+		glUniform1f(glGetUniformLocation(calcNewPosShader, "texSize_H"), WindowWidth); //Dont need here
+		glUniform1f(glGetUniformLocation(calcNewPosShader, "deltaTime"), deltaTime);
+		useFBO(fboParticle1, fboParticle2, 0L);
+		DrawModel(squareModel, calcNewPosShader, "in_Position", NULL, "in_TexCoord");
+		glFlush();
+
+		/*glUseProgram(simpelDrawShader);
 		// Many of these things would be more efficiently done once and for all
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
@@ -346,9 +359,9 @@ void display() {
 		glUniform1f(glGetUniformLocation(simpelDrawShader, "deltaTime"), deltaTime);
 		useFBO(fboParticle1, fboParticle2, 0L);
 		DrawModel(squareModel, simpelDrawShader, "in_Position", NULL, "in_TexCoord");
-		glFlush();
+		glFlush();*/
 
-		renderTexure(simpelDrawShader, fboParticle2, 0L);
+		renderTexure(simpelDrawShader, fboParticle1, 0L);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();

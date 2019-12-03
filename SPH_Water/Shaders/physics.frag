@@ -13,7 +13,7 @@ void main(){
 	
 	vec4 newSpeedvector = texture(texUnit, outTexCoord);
 
-	if(newSpeedvector.a >= 0.9){
+	if(newSpeedvector.a >= 0.5){
 		if(newSpeedvector.y < 5.0){
 			newSpeedvector.y += 9.82 * deltaTime * 0.01; 
 		}else{

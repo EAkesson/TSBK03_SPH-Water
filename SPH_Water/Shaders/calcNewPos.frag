@@ -2,15 +2,17 @@
 
 uniform sampler2D texUnit;
 uniform sampler2D texUnit2;
-uniform float texSize;
+uniform float texSize_W;
+uniform float texSize_H;
+uniform float deltaTime;
 
-in vec2 inTexCoord;
+in vec2 outTexCoord;
 out vec4 out_Color;
 
 void main(){
 
-	float texcoordX = inTexCoord.x*4000;
-	float texcoordY = inTexCoord.y*4000;
+	//float texcoordX = outTexCoord.x*4000;
+	//float texcoordY = outTexCoord.y*4000;
 
-	out_Color = vec4(0.0, 0.0, 0.0, 0.0);
+	out_Color = texture(texUnit, outTexCoord);
 }
