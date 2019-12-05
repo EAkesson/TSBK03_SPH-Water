@@ -13,12 +13,16 @@ out vec2 outTexCoord;
 
 void RelToTex(in vec3 relPos, out vec2 texPos)
 {
-
+	float z = floor(((relPos.z / 10.0) * 63.0));
+	texPos.x = int((relPos.x / 15.0) * 499.0 + (z - floor(z / 8.0) * 8.0) * 500.0);
+	texPos.y = int((relPos.y / 20.0) * 499.0 + floor(z / 8.0) * 500.0);
 }
 
 void TexToRel(in vec2 texPos, out vec3 relPos)
 {
-
+	relPos.z = floor(texPos.x/500) + floor(texPos.y/500)*8.0;
+	relPos.x = texPos.x - floor(texPos.x/500)*500.0;
+	relPos.y = texPos.y - floor(texPos.y/500)*500.0;
 }
 
 void main(void)
