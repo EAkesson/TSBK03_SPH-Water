@@ -149,6 +149,8 @@
     <None Include="Shaders\Particle.vert" />
     <None Include="Shaders\spawnParticles.frag" />
     <None Include="Shaders\spawnParticles.vert" />
+    <None Include="Shaders\SPH_Shader.frag" />
+    <None Include="Shaders\SPH_Shader.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -73,5 +73,11 @@
     <None Include="Shaders\spawnParticles.vert">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\SPH_Shader.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\SPH_Shader.vert">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>
