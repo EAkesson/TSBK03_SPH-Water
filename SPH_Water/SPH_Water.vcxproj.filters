@@ -91,5 +91,11 @@
     <None Include="Shaders\spawnParticles.vert">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\emptyTexture.vert">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\emptyTexture.vert.frag">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

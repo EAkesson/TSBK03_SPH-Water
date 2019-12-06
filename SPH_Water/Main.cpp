@@ -57,7 +57,7 @@ Model* squareModel;
 
 //----------------------Globals-------------------------------------------------
 FBOstruct *fboParticle1, *fboParticle2, *fboScreen;
-GLuint physicShader = 0, renderShader = 0, initPartTexShader = 0, calcNewPosShader = 0, simpelDrawShader=0, spawnParticlesShader = 0;
+GLuint physicShader = 0, renderShader = 0, initPartTexShader = 0, calcNewPosShader = 0, simpelDrawShader=0, spawnParticlesShader = 0, emptyTextureShader = 0;
 
 // For fps counter
 double lastTime = 0.0;
@@ -71,7 +71,8 @@ const int WindowHeight = 4000;
 const int textureSize = 4000;
 
 static GLbyte posTexture[textureSize][textureSize][4];
-static GLuint posTexName;
+static GLbyte tempTex[textureSize][textureSize][4];
+static GLuint posTexName, tempTexName;
 //---------------------------------------------------------------------------
 
 void calcFPS()
@@ -106,8 +107,22 @@ void initTexture() {
 			posTexture[x][y][1] = static_cast<GLbyte>(0.0);
 			posTexture[x][y][2] = static_cast<GLbyte>(0.0);
 			posTexture[x][y][3] = static_cast<GLbyte>(0.0);
+
+			tempTex[x][y][0] = static_cast<GLbyte>(0.0);
+			tempTex[x][y][1] = static_cast<GLbyte>(0.0);
+			tempTex[x][y][2] = static_cast<GLbyte>(0.0);
+			tempTex[x][y][3] = static_cast<GLbyte>(0.0);
 		}
 	}
+
+	glGenTextures(1, &tempTexName);
+	glBindTexture(GL_TEXTURE_2D, tempTexName);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, textureSize, textureSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, textureSize, textureSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, tempTex);
 }
 
 void spawnParticle(int numParticles)
@@ -146,14 +161,14 @@ void spawnParticle(int numParticles)
 		//printf("x%i, y%i \n", x, y);
 
 		// New particle
-		posTexture[y][x][0] = static_cast<GLubyte>(vel.x);
+		posTexture[y][x][0] = static_cast<GLubyte>(0.0/*vel.x*/);
 		posTexture[y][x][1] = static_cast<GLubyte>(vel.y);
-		posTexture[y][x][2] = static_cast<GLubyte>(vel.z);
+		posTexture[y][x][2] = static_cast<GLubyte>(0.0/*vel.z*/);
 		posTexture[y][x][3] = static_cast<GLubyte>(255.0);
-		/*posTexture[i][i][0] = static_cast<GLbyte>(255.0);
-		posTexture[i][i][1] = static_cast<GLbyte>(255.0);
-		posTexture[i][i][2] = static_cast<GLbyte>(0.0);
-		posTexture[i][i][3] = static_cast<GLbyte>(255.0);*/
+		/*posTexture[y][x][0] = static_cast<GLbyte>(255.0);
+		posTexture[y][x][1] = static_cast<GLbyte>(255.0);
+		posTexture[y][x][2] = static_cast<GLbyte>(0.0);
+		posTexture[y][x][3] = static_cast<GLbyte>(255.0);*/
 	}	
 }
 
@@ -227,6 +242,7 @@ void initShaders() {
 	calcNewPosShader = loadShaders("Shaders/calcNewPos.vert", "Shaders/calcNewPos.frag");
 	simpelDrawShader = loadShaders("Shaders/simpelDraw.vert", "Shaders/simpelDraw.frag");
 	spawnParticlesShader = loadShaders("Shaders/spawnParticles.vert", "Shaders/spawnParticles.frag");
+	emptyTextureShader = loadShaders("Shaders/emptyTexture.vert", "Shaders/emptyTexture.frag");
 }
 
 void initFBOs() {
@@ -263,6 +279,10 @@ void runFBO(GLuint shader, FBOstruct *in1, FBOstruct *in2, FBOstruct *out, bool 
 	glFlush();
 }
 
+void loadTextureToShader(int texSize, GLuint texName, static GLbyte tex, GLuint shader, int texPos) {
+	//Dosent work right now.....
+}
+
 void loadParticleTextoShader(GLuint shader, FBOstruct *out) {
 	glUseProgram(shader);
 	useFBO(out, 0L, 0L);
@@ -280,7 +300,7 @@ void loadParticleTextoShader(GLuint shader, FBOstruct *out) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureSize, textureSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, posTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, textureSize, textureSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, posTexture);
 	glGenerateMipmap(GL_TEXTURE_2D);
 	// Bind our texture in Texture Unit 2
 	glActiveTexture(GL_TEXTURE2);
@@ -289,6 +309,29 @@ void loadParticleTextoShader(GLuint shader, FBOstruct *out) {
 	glUniform1i(glGetUniformLocation(shader, "texUnit2"), 2);
 
 	DrawModel(squareModel, shader, "in_Position", NULL, "in_TexCoord");
+	glFlush();
+}
+
+void loadTempTexToShader(GLuint shader, int pos) {
+	// Bind our texture in Texture Unit 2	
+	glBindImageTexture(2, tempTexName, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+	//Set our "myTextureSampler" sampler to use Texture Unit 2
+	glUniform1i(glGetUniformLocation(shader, "texUnit2"), pos); //TODO make so textunit follows pos
+}
+
+void emptyTexture() {
+	glUseProgram(emptyTextureShader);
+	// Many of these things would be more efficiently done once and for all
+	glDisable(GL_CULL_FACE);
+	glDisable(GL_DEPTH_TEST);
+	glUniform1i(glGetUniformLocation(emptyTextureShader, "texUnit0"), 0);
+	glUniform1i(glGetUniformLocation(emptyTextureShader, "texUnit1"), 1);
+	
+	useFBO(fboParticle2, fboParticle1, 0L);
+
+	loadTempTexToShader(emptyTextureShader, 2);
+
+	DrawModel(squareModel, emptyTextureShader, "in_Position", NULL, "in_TexCoord");
 	glFlush();
 }
 
@@ -317,7 +360,7 @@ void display() {
 
 	do
 	{
-		//calcFPS();
+		calcFPS();
 		currentTime = glfwGetTime();
 		deltaTime = (float) (currentTime - lastTime_Local);
 		lastTime_Local = currentTime;
@@ -326,8 +369,8 @@ void display() {
 		// Many of these things would be more efficiently done once and for all
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
-		glUniform1i(glGetUniformLocation(physicShader, "texUnit"), 0);
-		glUniform1i(glGetUniformLocation(physicShader, "texUnit2"), 1);
+		glUniform1i(glGetUniformLocation(physicShader, "texUnit0"), 0);
+		glUniform1i(glGetUniformLocation(physicShader, "texUnit1"), 1);
 		glUniform1f(glGetUniformLocation(physicShader, "texSize_W"), WindowWidth); //Dont need here
 		glUniform1f(glGetUniformLocation(physicShader, "texSize_H"), WindowWidth); //Dont need here
 		glUniform1f(glGetUniformLocation(physicShader, "deltaTime"), deltaTime);
@@ -335,31 +378,43 @@ void display() {
 		DrawModel(squareModel, initPartTexShader, "in_Position", NULL, "in_TexCoord");
 		glFlush();
 
+		
 		glUseProgram(calcNewPosShader);
 		// Many of these things would be more efficiently done once and for all
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
-		glUniform1i(glGetUniformLocation(calcNewPosShader, "texUnit"), 0);
-		glUniform1i(glGetUniformLocation(calcNewPosShader, "texUnit2"), 1);
+		glUniform1i(glGetUniformLocation(calcNewPosShader, "texUnit0"), 0);
+		glUniform1i(glGetUniformLocation(calcNewPosShader, "texUnit1"), 1);
 		glUniform1f(glGetUniformLocation(calcNewPosShader, "texSize_W"), WindowWidth); //Dont need here
 		glUniform1f(glGetUniformLocation(calcNewPosShader, "texSize_H"), WindowWidth); //Dont need here
 		glUniform1f(glGetUniformLocation(calcNewPosShader, "deltaTime"), deltaTime);
 		useFBO(fboParticle1, fboParticle2, 0L);
+
+		loadTempTexToShader(calcNewPosShader, 2);
+
 		DrawModel(squareModel, calcNewPosShader, "in_Position", NULL, "in_TexCoord");
 		glFlush();
 
-		/*glUseProgram(simpelDrawShader);
+		glUseProgram(spawnParticlesShader);
 		// Many of these things would be more efficiently done once and for all
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
-		glUniform1i(glGetUniformLocation(simpelDrawShader, "texUnit"), 0);
-		glUniform1i(glGetUniformLocation(simpelDrawShader, "texUnit2"), 1);
-		glUniform1f(glGetUniformLocation(simpelDrawShader, "texSize_W"), WindowWidth); //Dont need here
-		glUniform1f(glGetUniformLocation(simpelDrawShader, "texSize_H"), WindowWidth); //Dont need here
-		glUniform1f(glGetUniformLocation(simpelDrawShader, "deltaTime"), deltaTime);
+		glUniform1i(glGetUniformLocation(spawnParticlesShader, "texUnit0"), 0);
+		glUniform1i(glGetUniformLocation(spawnParticlesShader, "texUnit1"), 1);
+		glUniform1f(glGetUniformLocation(spawnParticlesShader, "texSize_W"), WindowWidth); //Dont need here
+		glUniform1f(glGetUniformLocation(spawnParticlesShader, "texSize_H"), WindowWidth); //Dont need here
+		glUniform1f(glGetUniformLocation(spawnParticlesShader, "deltaTime"), deltaTime);
 		useFBO(fboParticle1, fboParticle2, 0L);
-		DrawModel(squareModel, simpelDrawShader, "in_Position", NULL, "in_TexCoord");
-		glFlush();*/
+
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, tempTexName);
+		//Set our "myTextureSampler" sampler to use Texture Unit 2
+		glUniform1i(glGetUniformLocation(spawnParticlesShader, "texUnit2"), 2);		
+
+		DrawModel(squareModel, spawnParticlesShader, "in_Position", NULL, "in_TexCoord");
+		glFlush();
+		
+		emptyTexture();
 
 		renderTexure(simpelDrawShader, fboParticle1, 0L);
 
@@ -389,11 +444,11 @@ int main(void)
 	glDisable(GL_CULL_FACE);
 	// Accept fragment if it closer to the camera than the former one
 	glDepthFunc(GL_LESS);
-
-	initTexture();
-	spawnParticle(10000);
+	
 	initShaders();
 	initFBOs();
+	initTexture();
+	spawnParticle(10000);
 
 	squareModel = LoadDataToModel(
 		square, NULL, squareTexCoord, NULL,

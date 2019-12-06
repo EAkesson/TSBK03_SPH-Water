@@ -1,7 +1,7 @@
 #version 330 core
 
-uniform sampler2D texUnit;
-uniform sampler2D texUnit2;
+uniform sampler2D texUnit0;
+uniform sampler2D texUnit1;
 uniform float texSize_W;
 uniform float texSize_H;
 uniform float deltaTime;
@@ -11,7 +11,7 @@ out vec4 out_Color;
 
 void main(){
 	
-	vec4 newSpeedvector = texture(texUnit, outTexCoord);
+	vec4 newSpeedvector = texture(texUnit0, outTexCoord);
 
 	if(newSpeedvector.a >= 0.5){
 		if(newSpeedvector.y < 5.0){
