@@ -103,9 +103,9 @@ void neighbouringParticles(inout Particle pA) {
 	ivec2 zSquare = ivec2(floor(outTexCoord.x / 500) , floor(outTexCoord.y / 500));
 
 	float xLO = (outTexCoord.x - ((7.0 / texSize) * zSquare.x * 500.0)) > 0.0 ? outTexCoord.x - (7.0 / texSize) : (500.0 / texSize) * zSquare.x;
-	float xHI = (outTexCoord.x + ((7.0 / texSize) * zSquare.x * 500.0)) < 500.0 ? outTexCoord.x + (7.0 / texSize) : (500.0 / texSize) * (zSquare.x + 1);
+	float xHI = (outTexCoord.x + ((7.0 / texSize) * zSquare.x * 500.0)) < 500.0 ? outTexCoord.x + (7.0 / texSize) : (500.0 / texSize) * (zSquare.x + 1.0);
 	float yLO = (outTexCoord.y - ((7.0 / texSize) * zSquare.y * 500.0)) > 0.0 ? outTexCoord.y - (7.0 / texSize) : (500.0 / texSize) * zSquare.y;
-	float yHI = (outTexCoord.y + ((7.0 / texSize) * zSquare.y * 500.0)) < 500.0 ? outTexCoord.y + (7.0 / texSize) : (500.0 / texSize) * (zSquare.y + 1);
+	float yHI = (outTexCoord.y + ((7.0 / texSize) * zSquare.y * 500.0)) < 500.0 ? outTexCoord.y + (7.0 / texSize) : (500.0 / texSize) * (zSquare.y + 1.0);
 	int zLO = (zSquare.x + zSquare.y - 7) > 0 ?  zSquare.x + zSquare.y - 7 : 0;
 	int zHI = (zSquare.x + zSquare.y + 7) < 63 ? zSquare.x + zSquare.y + 7 : 63;
 

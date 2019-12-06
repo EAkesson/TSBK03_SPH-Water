@@ -378,7 +378,7 @@ int main(void)
 	glDepthFunc(GL_LESS);
 
 	initTexture();
-	spawnParticle(1000);
+	spawnParticle(1000000);
 	initShaders();
 	initFBOs();
 
