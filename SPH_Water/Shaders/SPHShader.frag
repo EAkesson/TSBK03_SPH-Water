@@ -1,7 +1,9 @@
 #version 420 core
 
-uniform sampler2D texUnit1;
-uniform int texSize;
+uniform sampler2D texPos;
+uniform sampler2D texVel;
+uniform float texSize;
+uniform float deltaTime;
 
 in vec2 outTexCoord;
 out vec4 out_Color;
@@ -30,10 +32,10 @@ float viscosity = 0.018;
 // Constants
 float Poly6_const = 315.0 / (64.0 * PI_F * pow(h, 9));
 float Spiky_const = -45.0 / (PI_F * pow(h, 6));
-float deltaTime = 0.016; // For 60fps
-vec3 G = vec3(0, -9.8, 0);
+//float deltaTime = 0.016; // For 60fps
+vec3 G = vec3(0, -9.8, 0.2);
 
-void RelToTex(in vec3 relPos, out vec2 texPos)
+/*void RelToTex(in vec3 relPos, out vec2 texPos)
 {
 	float z = floor(((relPos.z / 10.0) * 63.0));
 	texPos.x = int((relPos.x / 15.0) * 499.0 + (z - floor(z / 8.0) * 8.0) * 500.0);
@@ -45,7 +47,7 @@ void TexToRel(in vec2 texPos, out vec3 relPos)
 	relPos.z = floor(texPos.x/500) + floor(texPos.y/500)*8.0;
 	relPos.x = texPos.x - floor(texPos.x/500)*500.0;
 	relPos.y = texPos.y - floor(texPos.y/500)*500.0;
-}
+}*/
 
 void calcPressure(inout Particle pA, in Particle pB) {
 
@@ -93,7 +95,7 @@ void calcViscosity(inout Particle pA, in Particle pB) {
 
 	tempForce *= viscosity;
 
-	pA.vel += deltaTime * ((pA.force + tempForce) / pA.density + G);
+	pA.vel += 0.01 * deltaTime * ((pA.force + tempForce) / pA.density + G);
 	pA.pos += deltaTime * pA.vel;
 	pA.force = vec3(0.0);
 }
@@ -147,16 +149,17 @@ void neighbouringParticles(inout Particle pA) {
 	int zLO = (zSquare.x + zSquare.y - 7) > 0 ?  zSquare.x + zSquare.y - 7 : 0;
 	int zHI = (zSquare.x + zSquare.y + 7) < 63 ? zSquare.x + zSquare.y + 7 : 63;
 
-	for(float x = xLO; x < xHI; x + (1.0/texSize)) {
-		for(float y = yLO; y < yHI; y + (1.0/texSize)){
+	for(float x = xLO; x < xHI; x += (1.0/texSize)) {
+		for(float y = yLO; y < yHI; y += (1.0/texSize)){
 			for(int z = zLO; z < zHI; z++) {
-				vec4 currPos = texture(texUnit1, vec2(x, y));
-				if(currPos.a > 0.8) {
-					vec3 tempPos;
-					TexToRel(vec2(x, y), tempPos);
-					Particle pB = Particle(1.0, tempPos, vec3(currPos), vec3(0.0));
+
+				vec2 currTex = vec2((z-floor(z / 8.0)) * 500.0 + x , floor(z / 8.0) * 500.0 + y);
+
+				vec4 currVel = texture(texVel, currTex);
+				if(currVel.a > 0.8) {
+					Particle pB = Particle(1.0, vec3(texture(texPos, currTex)), vec3(currVel), vec3(0.0));
 					calcForce(pA, pB);
-					if(length(outTexCoord - vec2(x, y)) > EPSILON) {
+					if(length(outTexCoord - currTex) > EPSILON) {
 						calcPressure(pA, pB);
 						calcViscosity(pA, pB);
 					}
@@ -169,15 +172,9 @@ void neighbouringParticles(inout Particle pA) {
 void main(void)
 {
 
-	vec3 relPos;
-	TexToRel(outTexCoord, relPos);
-
-	Particle pA = Particle(1.0, relPos, vec3(texture(texUnit1, outTexCoord)), vec3(0.0));
+	Particle pA = Particle(1.0, vec3(texture(texPos, outTexCoord)), vec3(texture(texVel, outTexCoord)), vec3(0.0));
 
 	neighbouringParticles(pA);
 
-	vec2 tempTex;
-	RelToTex(pA.pos, tempTex);
-
-	out_Color = texture(texUnit1, tempTex);
+	out_Color = vec4(pA.vel, 1.0);
 }

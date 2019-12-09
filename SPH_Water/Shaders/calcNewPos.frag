@@ -90,7 +90,7 @@ void main(){
 		vec3 realPos = vec3(texture(texPos, outTexCoord));
 		//TexToRel(texPixCoord, realPos);
 
-		vec3 newrealPos = realPos + vec3(texture(texVel, outTexCoord)) * deltaTime;
+		vec3 newrealPos = realPos + vec3(texture(texVel, outTexCoord)) * deltaTime * 0.01;
 		ivec2 newTexPixCoord;
 		RelToTex(newrealPos, newTexPixCoord);
 	

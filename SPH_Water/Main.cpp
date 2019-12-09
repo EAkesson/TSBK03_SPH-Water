@@ -365,7 +365,6 @@ void display() {
 	DrawModel(squareModel, enQuickie, "in_Position", NULL, "in_TexCoord");
 	glFlush();
 	
-	int hej = 0;
 	do
 	{
 		calcFPS();
@@ -374,8 +373,8 @@ void display() {
 		lastTime_Local = currentTime;
 
 		
-		useFBOwithTex(physicShader, fboParticlePos2, fboParticleVel1, fboParticleVel2, deltaTime);
-		DrawModel(squareModel, physicShader, "in_Position", NULL, "in_TexCoord");
+		useFBOwithTex(SPH_Shader, fboParticlePos2, fboParticleVel1, fboParticleVel2, deltaTime);
+		DrawModel(squareModel, SPH_Shader, "in_Position", NULL, "in_TexCoord");
 		glFlush();
 
 
@@ -425,7 +424,7 @@ int main(void)
 	initShaders();
 	initFBOs();
 	initTexture();
-	spawnParticle(10000);
+	spawnParticle(100000);
 
 	squareModel = LoadDataToModel(
 		square, NULL, squareTexCoord, NULL,
