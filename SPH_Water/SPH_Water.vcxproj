@@ -140,8 +140,10 @@
   <ItemGroup>
     <None Include="Shaders\calcNewPos.frag" />
     <None Include="Shaders\calcNewPos.vert" />
+    <None Include="Shaders\emptyTexture.frag" />
     <None Include="Shaders\emptyTexture.vert" />
-    <None Include="Shaders\emptyTexture.vert.frag" />
+    <None Include="Shaders\EriksQuicky.frag" />
+    <None Include="Shaders\EriksQuicky.vert" />
     <None Include="Shaders\initPartTex.frag" />
     <None Include="Shaders\initPartTex.vert" />
     <None Include="Shaders\Particle.frag" />
@@ -150,8 +152,8 @@
     <None Include="Shaders\physics.vert" />
     <None Include="Shaders\simpelDraw.frag" />
     <None Include="Shaders\simpelDraw.vert" />
-    <None Include="Shaders\spawnParticles.frag" />
-    <None Include="Shaders\spawnParticles.vert" />
+    <None Include="Shaders\loadTexToFBO.frag" />
+    <None Include="Shaders\loadTexToFBO.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

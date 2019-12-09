@@ -1,11 +1,12 @@
 #version 420 core
 
-uniform sampler2D texUnit0;
-uniform sampler2D texUnit1;
-//uniform sampler2D texUnit2;
+uniform sampler2D texPos;
+uniform sampler2D texVel;
+
 uniform layout(rgba32f) image2D texUnit2;
-uniform float texSize_W;
-uniform float texSize_H;
+uniform layout(rgba32f) image2D texUnit3;
+
+uniform float texSize;
 uniform float deltaTime;
 
 in vec2 outTexCoord;
@@ -34,8 +35,8 @@ void RelToTex(in vec3 relPos, out ivec2 texPos)
 	clampRelPos(relPos);
 
 	float z = floor(((relPos.z / 10.0) * 63.0));
-	texPos.x = int((relPos.x / 15.0) * 499.0 + (z - floor(z / 8.0) * 8.0) * 500.0);
-	texPos.y = int((relPos.y / 20.0) * 499.0 + floor(z / 8.0) * 500.0);
+	texPos.x = int(floor((relPos.x / 15.0) * 500.0) + (z - floor(z / 8.0) * 8.0) * 500.0);
+	texPos.y = int(floor((relPos.y / 20.0) * 500.0) + floor(z / 8.0) * 500.0);
 }
 
 void TexToRel(in ivec2 texPos, out vec3 relPos)
@@ -79,19 +80,26 @@ void main(){
 //
 //	out_Color = texture(texUnit0, outTexCoord);
 	
+	vec4 particleSpeed = texture(texVel, outTexCoord);
+	if(true/*particleSpeed.a > 0.5*/)
+	{
+		ivec2 texPixCoord;
+		texPixCoord.x = int(floor(outTexCoord.x*4000));
+		texPixCoord.y = int(floor(outTexCoord.y*4000));
 
-	ivec2 texPixCoord;
-	texPixCoord.x = int(floor(outTexCoord.x*4000));
-	texPixCoord.y = int(floor(outTexCoord.y*4000));
-	vec3 realPos;
+		vec3 realPos = vec3(texture(texPos, outTexCoord));
+		//TexToRel(texPixCoord, realPos);
 
-	TexToRel(texPixCoord, realPos);
-	vec3 newrealPos = realPos;// + vec3(texture(texUnit0, outTexCoord)) * deltaTime * 0.000001;
-	ivec2 newTexPixCoord;
-	RelToTex(newrealPos, newTexPixCoord);
+		vec3 newrealPos = realPos + vec3(texture(texVel, outTexCoord)) * deltaTime;
+		ivec2 newTexPixCoord;
+		RelToTex(newrealPos, newTexPixCoord);
 	
-	imageStore(texUnit2, newTexPixCoord, (texture(texUnit0, outTexCoord)));
+		//newTexPixCoord = texPixCoord + ivec2((newTexPixCoord - texPixCoord) * 0.0008);
 
-	out_Color = texture(texUnit0, outTexCoord);
+		imageStore(texUnit2, newTexPixCoord, vec4(newrealPos, 1.0));
+		imageStore(texUnit3, newTexPixCoord, texture(texVel, outTexCoord));
+
+		out_Color = vec4(0.0);		
+	}
 
 }

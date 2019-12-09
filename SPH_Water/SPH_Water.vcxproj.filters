@@ -85,16 +85,22 @@
     <None Include="Shaders\simpelDraw.vert">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Shaders\spawnParticles.frag">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Shaders\spawnParticles.vert">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="Shaders\emptyTexture.vert">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Shaders\emptyTexture.vert.frag">
+    <None Include="Shaders\loadTexToFBO.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\loadTexToFBO.vert">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\emptyTexture.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\EriksQuicky.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\EriksQuicky.vert">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>
