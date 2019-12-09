@@ -60,11 +60,26 @@ void calcFPS()
 	}
 }
 
-const int MaxParticles = 10000;
+const int MaxParticles = 100;
 Particle ParticlesContainer[MaxParticles];
 int nextParticle = 0;
 const int WindowWidth = 1024;
 const int WindowHeight = 768;
+
+/* ********** */
+// For SPH calculations
+#define PI 3.14159
+#define EPSILON 0.000001
+
+float h = 10.0f;
+float referenceDensity = 1.0f;
+float pressureConstant = 250.0f;
+float viscosity = 0.018f;
+
+const float Poly6_Const = 315.0f / (64.0f * PI * pow(h, 9));
+const float Spiky_Const = -45.0f / (PI * pow(h, 6));
+vec3 G{ 0.0f, -9.82f, 0.0 };
+/* ********** */
 
 void SortParticles() {
 	std::sort(&ParticlesContainer[0], &ParticlesContainer[MaxParticles]);
@@ -132,7 +147,7 @@ void generateNewParticles(double *delta) {
 
 	for (int i = 0; i < newparticles; i++) {
 		if (nextParticle < MaxParticles) {
-			ParticlesContainer[nextParticle].pos = glm::vec3(0, 4, -20.0f);
+			ParticlesContainer[nextParticle].pos = glm::vec3(4.0f, 1.0f, 5.0f);
 
 			float spread = 1.5f;
 			glm::vec3 maindir = glm::vec3(0.0f, 10.0f, 0.0f);
@@ -161,7 +176,135 @@ void generateNewParticles(double *delta) {
 	}
 }
 
+void setBoundingBoxWithPosAndSpeed(Particle curr, vec3 force, float deltaTime)
+{
+	curr.speed += deltaTime * ((curr.force + force) / curr.density + G);
 
+	vec3 tempPos = curr.pos + deltaTime * curr.speed;
+
+	vec3 xNorm{1.0, 1.0, 0.0}, yNorm{0.0, 1.0, 0.0}, zNorm{0.0, 0.0, 1.0};
+	
+	if(tempPos.x < 0.0)
+	{
+		curr.speed *= -1.0f;
+		//curr.pos.x = max(curr.pos.x, 0.0f);
+
+		//curr.speed = curr.speed - 2 * dot(curr.speed, xNorm) * xNorm;
+		
+	}
+	else if(tempPos.x > 15.0f)
+	{
+		curr.speed *= -1.0f;
+		//curr.pos.x = min(curr.pos.x, 15.0f);
+
+		//curr.speed = curr.speed - 2 * dot(curr.speed, -xNorm) * -xNorm;
+	}
+
+	if (tempPos.y < 0.0)
+	{
+		curr.speed *= -1.0f;
+		//curr.pos.y = max(curr.pos.y, 0.0f);
+
+		//curr.speed = curr.speed - 2 * dot(curr.speed, yNorm) * yNorm;
+	}
+	else if (tempPos.y > 20.0f)
+	{
+		curr.speed *= -1.0f;
+		//curr.pos.y = min(curr.pos.y, 20.0f);
+
+		//curr.speed = curr.speed - 2 * dot(curr.speed, -yNorm) * -yNorm;
+	}
+
+	if (tempPos.z < 0.0)
+	{
+		curr.speed *= -1.0f;
+		//curr.pos.z = max(curr.pos.z, 0.0f);
+
+		//curr.speed = curr.speed - 2 * dot(curr.speed, zNorm) * zNorm;
+	}
+	else if (tempPos.z > 10.0f)
+	{
+		curr.speed *= -1.0f;
+		//curr.pos.z = min(curr.pos.z, 10.0f);
+
+		//curr.speed = curr.speed - 2 * dot(curr.speed, -zNorm) * -zNorm;
+	}
+
+	curr.pos += deltaTime * curr.speed;
+
+	//printf("Speed: %f, %f, %f\n", curr.speed.x, curr.speed.y, curr.speed.z);
+	//printf("Pos: %f, %f, %f\n", curr.pos.x, curr.pos.y, curr.pos.z);
+
+	curr.force = vec3(0.0);
+}
+
+void calcPressure(Particle& pA, Particle& pB)
+{
+	pA.density = 0.0;
+
+	vec3 diff = pA.pos - pB.pos;
+	float r2 = dot(diff, diff);
+	if(r2 < pow(h, 2))
+	{
+		float W = Poly6_Const * pow(pow(h, 2) - r2, 3);
+		pA.density += pA.weight * W;
+	}
+	pA.density = max(referenceDensity, pA.density);
+}
+
+void calcForce(Particle& pA, Particle& pB)
+{
+	pA.force = vec3(0.0);
+	
+	vec3 diff = pA.pos - pB.pos;
+	float r = sqrt(dot(diff, diff));
+	if (r > 0 && r < h)
+	{
+		vec3 rNorm = diff / r;
+		float W = Spiky_Const * pow(h - r, 2);
+
+		pA.force += ((pressureConstant * (pA.density - referenceDensity) + pressureConstant * (pB.density - referenceDensity)) / (2.0f * pA.density * pB.density)) * W * rNorm;
+	}
+	pA.force *= -1.0f;
+}
+
+void calcViscosity(Particle& pA, Particle& pB, float deltaTime)
+{
+	vec3 tempForce{ 0.0 };
+
+	vec3 diff = pA.pos - pB.pos;
+	float r = sqrt(dot(diff, diff));
+	if(r > 0 && r < h)
+	{
+		vec3 rNorm = diff / r;
+		float r3 = pow(r, 3);
+		float W = -(r3 / (2.0f * pow(h, 3)) + (pow(r, 2) / pow(h, 2)) + h / (2.0f * r)) - 1.0f;
+
+		tempForce += (1.0f / pB.density) * (pB.speed - pA.speed) * W * rNorm;
+	}
+
+	tempForce *= viscosity;
+
+	setBoundingBoxWithPosAndSpeed(pA, tempForce, deltaTime);
+}
+
+void checkNeighbour(Particle& pA, float deltaTime, int currElement)
+{
+	for(int i = 0; i < nextParticle; i++)
+	{
+		//printf("%s", "Hej");
+		if(length(pA.pos - ParticlesContainer[i].pos) < EPSILON)
+		{
+			Particle& pB = ParticlesContainer[i];
+			calcPressure(pA, pB);
+			if(i != currElement)
+			{
+				calcForce(pA, pB);
+				calcViscosity(pA, pB, deltaTime);
+			}
+		}
+	}
+}
 
 int main(void)
 {
@@ -211,7 +354,6 @@ int main(void)
 	for (int i = 0; i < MaxParticles; i++) {		
 		ParticlesContainer[i].cameradistance = -1.0f;
 	}
-
 
 
 	GLuint Texture = loadDDS("particle.DDS");
@@ -277,25 +419,138 @@ int main(void)
 		// Simulate all particles		
 		for (int ParticlesCount = 0; ParticlesCount < nextParticle; ParticlesCount++) {
 
-			Particle& p = ParticlesContainer[ParticlesCount]; // shortcut
+			Particle& pA = ParticlesContainer[ParticlesCount]; // shortcut
 
 			// Simulate simple physics : gravity only, no collisions
-			p.speed += glm::vec3(0.0f, -9.82f, 0.0f) * (float)delta * 0.5f;
+			/*p.speed += glm::vec3(0.0f, -9.82f, 0.0f) * (float)delta * 0.5f;
 			p.pos += p.speed * (float)delta;
-			p.pos.y = max(p.pos.y, -10.0f);
-			p.cameradistance = glm::length2(p.pos - CameraPosition);			
+
+			p.pos.x = min(p.pos.x, 15.0f);
+			p.pos.y = min(p.pos.y, 20.0f);
+			p.pos.z = min(p.pos.z, 10.0f);
+			
+			p.pos.x = max(p.pos.x, 0.0f);
+			p.pos.y = max(p.pos.y, 0.0f);
+			p.pos.z = max(p.pos.z, 0.0f);*/
+
+			for(int i = 0; i < nextParticle; i++)
+			{
+				if (length(ParticlesContainer[i].pos - pA.pos) < h)
+				{
+					Particle& pB = ParticlesContainer[i];
+					
+					pA.density = 0.0;
+
+					vec3 diff = pA.pos - pB.pos;
+					float r2 = dot(diff, diff);
+					if (r2 < pow(h, 2))
+					{
+						float W = Poly6_Const * pow(pow(h, 2) - r2, 3);
+						pA.density += pA.weight * W;
+					}
+					pA.density = max(referenceDensity, pA.density);
+					
+					if (i != ParticlesCount)
+					{
+						pA.force = vec3(0.0);
+						vec3 tempForce{ 0.0 };
+
+						float r = sqrt(dot(diff, diff));
+						if (r > 0 && r < h)
+						{
+							vec3 rNorm = diff / r;
+							float W1 = Spiky_Const * pow(h - r, 2);
+
+							float r3 = pow(r, 3);
+							float W2 = -(r3 / (2.0f * pow(h, 3)) + (pow(r, 2) / pow(h, 2)) + h / (2.0f * r)) - 1.0f;
+
+							pA.force += ((pressureConstant * (pA.density - referenceDensity) + pressureConstant * (pB.density - referenceDensity)) / (2.0f * pA.density * pB.density)) * W1 * rNorm;
+							tempForce += (1.0f / pB.density) * (pB.speed - pA.speed) * W2 * rNorm;
+						}
+						
+						pA.force *= -1.0f;
+
+						tempForce *= viscosity;
+
+						pA.speed += (float)delta * ((pA.force + tempForce) / pA.density + G) * 0.01f;
+
+						vec3 tempPos = pA.pos + (float)delta * pA.speed;
+
+						vec3 xNorm{ 1.0, 1.0, 0.0 }, yNorm{ 0.0, 1.0, 0.0 }, zNorm{ 0.0, 0.0, 1.0 };
+
+						if (tempPos.x < 0.0)
+						{
+							//pA.speed *= -1.0f;
+						
+							pA.speed = pA.speed - 2 * dot(pA.speed, xNorm) * xNorm;
+							pA.pos.x = max(pA.pos.x, 0.0f);
+						}
+						else if (tempPos.x > 15.0f)
+						{
+							//pA.speed *= -1.0f;
+
+							pA.speed = pA.speed - 2 * dot(pA.speed, -xNorm) * -xNorm;
+							pA.pos.x = min(pA.pos.x, 15.0f);
+						}
+
+						if (tempPos.y < 0.0)
+						{
+							//pA.speed *= -1.0f;
+							
+							pA.speed = pA.speed - 2 * dot(pA.speed, yNorm) * yNorm;
+							pA.pos.y = max(pA.pos.y, 0.0f);
+						}
+						else if (tempPos.y > 20.0f)
+						{
+							//pA.speed *= -1.0f;
+							
+							pA.speed = pA.speed - 2 * dot(pA.speed, -yNorm) * -yNorm;
+							pA.pos.y = min(pA.pos.y, 20.0f);
+						}
+
+						if (tempPos.z < 0.0)
+						{
+							//pA.speed *= -1.0f;
+							
+							pA.speed = pA.speed - 2 * dot(pA.speed, zNorm) * zNorm;
+							pA.pos.z = max(pA.pos.z, 0.0f);
+						}
+						else if (tempPos.z > 10.0f)
+						{
+							//pA.speed *= -1.0f;
+							
+							pA.speed = pA.speed - 2 * dot(pA.speed, -zNorm) * -zNorm;
+							pA.pos.z = min(pA.pos.z, 10.0f);
+						}
+
+						pA.pos += (float)delta * pA.speed;
+
+						//printf("Speed: %f, %f, %f\n", pA.speed.x, pA.speed.y, pA.speed.z);
+						//printf("Pos: %f, %f, %f\n", pA.pos.x, pA.pos.y, pA.pos.z);
+
+						pA.force = vec3(0.0);
+						
+					}
+				}
+			}
+
+			//checkNeighbour(pA, delta, ParticlesCount);
+
+			//printf("Pos: %f, %f, %f\n", pA.pos.x, pA.pos.y, pA.pos.z);
+			
+			pA.cameradistance = glm::length2(pA.pos - CameraPosition);			
 
 			// Fill the GPU buffer
-			g_particule_position_size_data[4 * ParticlesCount + 0] = p.pos.x;
-			g_particule_position_size_data[4 * ParticlesCount + 1] = p.pos.y;
-			g_particule_position_size_data[4 * ParticlesCount + 2] = p.pos.z;
+			g_particule_position_size_data[4 * ParticlesCount + 0] = pA.pos.x;
+			g_particule_position_size_data[4 * ParticlesCount + 1] = pA.pos.y;
+			g_particule_position_size_data[4 * ParticlesCount + 2] = pA.pos.z;
 
-			g_particule_position_size_data[4 * ParticlesCount + 3] = p.size;
+			g_particule_position_size_data[4 * ParticlesCount + 3] = pA.size;
 
-			g_particule_color_data[4 * ParticlesCount + 0] = p.r;
-			g_particule_color_data[4 * ParticlesCount + 1] = p.g;
-			g_particule_color_data[4 * ParticlesCount + 2] = p.b;
-			g_particule_color_data[4 * ParticlesCount + 3] = p.a;
+			g_particule_color_data[4 * ParticlesCount + 0] = pA.r;
+			g_particule_color_data[4 * ParticlesCount + 1] = pA.g;
+			g_particule_color_data[4 * ParticlesCount + 2] = pA.b;
+			g_particule_color_data[4 * ParticlesCount + 3] = pA.a;
 
 			//ParticlesCount++;		
 		}
