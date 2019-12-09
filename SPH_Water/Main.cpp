@@ -5,7 +5,7 @@
 #include <vector>
 #include <algorithm>
 
-#include <GL\glew.h>
+#include <GL/glew.h>
 
 #include <GLFW/glfw3.h>
 GLFWwindow* window;
@@ -41,7 +41,7 @@ Model* squareModel;
 
 //----------------------Globals-------------------------------------------------
 FBOstruct *fboParticle1, *fboParticle2, *fboScreen, *fboParticlePos1, *fboParticlePos2, *fboParticleVel1, *fboParticleVel2;
-GLuint physicShader = 0, renderShader = 0, initPartTexShader = 0, calcNewPosShader = 0, simpelDrawShader=0, loadTexToFBOShader = 0, emptyTextureShader = 0, enQuickie= 0;
+GLuint physicShader = 0, renderShader = 0, initPartTexShader = 0, calcNewPosShader = 0, simpelDrawShader=0, loadTexToFBOShader = 0, emptyTextureShader = 0, enQuickie= 0, SPH_Shader = 0;
 
 // For fps counter
 double lastTime = 0.0;
@@ -232,6 +232,7 @@ bool initProgram() {
 	if (!initGlew())
 		return false;
 
+	//posTexture = new GLbyte[textureSize][textureSize][4];
 	return true;
 }
 
@@ -243,6 +244,7 @@ void initShaders() {
 	loadTexToFBOShader = loadShaders("Shaders/loadTexToFBO.vert", "Shaders/loadTexToFBO.frag");
 	emptyTextureShader = loadShaders("Shaders/emptyTexture.vert", "Shaders/emptyTexture.frag");
 	enQuickie = loadShaders("Shaders/EriksQuicky.vert", "Shaders/EriksQuicky.frag");
+	SPH_Shader = loadShaders("Shaders/SPHShader.vert", "Shaders/SPHShader.frag");
 }
 
 void initFBOs() {
@@ -366,7 +368,6 @@ void display() {
 	int hej = 0;
 	do
 	{
-		
 		calcFPS();
 		currentTime = glfwGetTime();
 		deltaTime = (float)(currentTime - lastTime_Local);
@@ -429,7 +430,7 @@ int main(void)
 	squareModel = LoadDataToModel(
 		square, NULL, squareTexCoord, NULL,
 		squareIndices, 4, 6);
-
+	
 	display();
 
 	// Close OpenGL window and terminate GLFW
