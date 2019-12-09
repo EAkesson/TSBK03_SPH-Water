@@ -1,7 +1,4 @@
-#version 330 core
-
-const float PI_F = 3.1415;
-const float EPSILON = 0.000001;
+#version 420 core
 
 uniform sampler2D texUnit1;
 uniform int texSize;
@@ -9,6 +6,9 @@ uniform int texSize;
 in vec2 outTexCoord;
 out vec4 out_Color;
 
+
+const float PI_F = 3.1415;
+const float EPSILON = 0.000001;
 
 // Temporary variables
 struct Particle {
@@ -20,18 +20,18 @@ struct Particle {
 
 int numParticles = 1000;
 
-float particleMass = 10.0f; 
-float particleRadius = 1.0f; 
-float h = 5.0f;
-float referenceDensity = 1.0f; 
-float pressureConstant = 250.0f; 
-float viscosity = 0.018f;
+float particleMass = 10.0; 
+float particleRadius = 1.0; 
+float h = 5.0;
+float referenceDensity = 1.0; 
+float pressureConstant = 250.0; 
+float viscosity = 0.018;
 
 // Constants
-float Poly6_const = 315.0f / (64.0f * PI_F * pow(h, 9));
-float Spiky_const = -45.0f / (PI_F * pow(h, 6));
-float deltaTime = 0.016f; // For 60fps
-vec3 G = vec3(0, -9.8f, 0);
+float Poly6_const = 315.0 / (64.0 * PI_F * pow(h, 9));
+float Spiky_const = -45.0 / (PI_F * pow(h, 6));
+float deltaTime = 0.016; // For 60fps
+vec3 G = vec3(0, -9.8, 0);
 
 void RelToTex(in vec3 relPos, out vec2 texPos)
 {
@@ -100,12 +100,50 @@ void calcViscosity(inout Particle pA, in Particle pB) {
 
 void neighbouringParticles(inout Particle pA) {
 
-	ivec2 zSquare = ivec2(floor(outTexCoord.x / 500) , floor(outTexCoord.y / 500));
+	ivec2 zSquare = ivec2(floor(outTexCoord.x / 500), floor(outTexCoord.y / 500));
 
-	float xLO = (outTexCoord.x - ((7.0 / texSize) * zSquare.x * 500.0)) > 0.0 ? outTexCoord.x - (7.0 / texSize) : (500.0 / texSize) * zSquare.x;
-	float xHI = (outTexCoord.x + ((7.0 / texSize) * zSquare.x * 500.0)) < 500.0 ? outTexCoord.x + (7.0 / texSize) : (500.0 / texSize) * (zSquare.x + 1.0);
-	float yLO = (outTexCoord.y - ((7.0 / texSize) * zSquare.y * 500.0)) > 0.0 ? outTexCoord.y - (7.0 / texSize) : (500.0 / texSize) * zSquare.y;
-	float yHI = (outTexCoord.y + ((7.0 / texSize) * zSquare.y * 500.0)) < 500.0 ? outTexCoord.y + (7.0 / texSize) : (500.0 / texSize) * (zSquare.y + 1.0);
+	float xLO, xHI, yLO, yHI;
+
+	if((outTexCoord.x - ((7.0 / texSize) * zSquare.x * 500.0)) > 0.0)
+	{
+		xLO = outTexCoord.x - (7.0 / texSize);
+	}
+	else
+	{
+		xLO = (500.0 / texSize) * zSquare.x;
+	}
+
+	if((outTexCoord.x + ((7.0 / texSize) * zSquare.x * 500.0)) < 500.0)
+	{
+		xHI = outTexCoord.x + (7.0 / texSize);
+	}
+	else
+	{
+		xHI = (500.0 / texSize) * (zSquare.x + 1.0);
+	}
+
+	if((outTexCoord.y - ((7.0 / texSize) * zSquare.y * 500.0)) > 0.0)
+	{
+		yLO = outTexCoord.y - (7.0 / texSize);
+	}
+	else
+	{
+		yLO = (500.0 / texSize) * zSquare.y;
+	}
+
+	if((outTexCoord.y + ((7.0 / texSize) * zSquare.y * 500.0)) < 500.0)
+	{
+		yHI = outTexCoord.y + (7.0 / texSize);
+	}
+	else
+	{
+		yHI = (500.0 / texSize) * (zSquare.y + 1.0);
+	}
+
+	//float xLO = (outTexCoord.x - ((7.0 / texSize) * zSquare.x * 500.0)) > 0.0 ? outTexCoord.x - (7.0 / texSize) : (500.0 / texSize) * zSquare.x;
+	//float xHI = (outTexCoord.x + ((7.0 / texSize) * zSquare.x * 500.0)) < 500.0 ? outTexCoord.x + (7.0 / texSize) : (500.0 / texSize) * (zSquare.x + 1.0);
+	//float yLO = (outTexCoord.y - ((7.0 / texSize) * zSquare.y * 500.0)) > 0.0 ? outTexCoord.y - (7.0 / texSize) : (500.0 / texSize) * zSquare.y;
+	//float yHI = (outTexCoord.y + ((7.0 / texSize) * zSquare.y * 500.0)) < 500.0 ? outTexCoord.y + (7.0 / texSize) : (500.0 / texSize) * (zSquare.y + 1.0);
 	int zLO = (zSquare.x + zSquare.y - 7) > 0 ?  zSquare.x + zSquare.y - 7 : 0;
 	int zHI = (zSquare.x + zSquare.y + 7) < 63 ? zSquare.x + zSquare.y + 7 : 63;
 
@@ -128,7 +166,8 @@ void neighbouringParticles(inout Particle pA) {
 	}
 }
 
-void main(void){
+void main(void)
+{
 
 	vec3 relPos;
 	TexToRel(outTexCoord, relPos);
@@ -137,5 +176,8 @@ void main(void){
 
 	neighbouringParticles(pA);
 
-	out_Color = texture(texUnit1, outTexCoord);
+	vec2 tempTex;
+	RelToTex(pA.pos, tempTex);
+
+	out_Color = texture(texUnit1, tempTex);
 }

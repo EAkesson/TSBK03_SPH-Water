@@ -57,7 +57,7 @@ Model* squareModel;
 
 //----------------------Globals-------------------------------------------------
 FBOstruct *fboParticle1, *fboParticle2, *fboScreen;
-GLuint physicShader = 0, renderShader = 0, initPartTexShader = 0, calcNewPosShader = 0, simpelDrawShader=0, spawnParticlesShader = 0;
+GLuint physicShader = 0, renderShader = 0, initPartTexShader = 0, calcNewPosShader = 0, simpelDrawShader=0, spawnParticlesShader = 0, SPH_Shader = 0;
 
 // For fps counter
 double lastTime = 0.0;
@@ -228,6 +228,7 @@ void initShaders() {
 	calcNewPosShader = loadShaders("Shaders/calcNewPos.vert", "Shaders/calcNewPos.frag");
 	simpelDrawShader = loadShaders("Shaders/simpelDraw.vert", "Shaders/simpelDraw.frag");
 	spawnParticlesShader = loadShaders("Shaders/spawnParticles.vert", "Shaders/spawnParticles.frag");
+	SPH_Shader = loadShaders("Shaders/SPHShader.vert", "Shaders/SPHShader.frag");
 }
 
 void initFBOs() {
