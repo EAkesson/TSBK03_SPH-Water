@@ -60,7 +60,7 @@ void calcFPS()
 	}
 }
 
-const int MaxParticles = 250;
+const int MaxParticles = 100;
 Particle ParticlesContainer[MaxParticles];
 int nextParticle = 0;
 const int WindowWidth = 1024;
