@@ -56,11 +56,11 @@ void calcFPS()
 		glfwSetWindowTitle(window, ss.str().c_str());
 
 		nbFrames = 0;
-		lastTime = currentTime;
+		lastTime = static_cast<float>(currentTime);
 	}
 }
 
-const int MaxParticles = 100;
+const int MaxParticles = 250;
 Particle ParticlesContainer[MaxParticles];
 int nextParticle = 0;
 const int WindowWidth = 1024;
@@ -71,13 +71,15 @@ const int WindowHeight = 768;
 #define PI 3.14159
 #define EPSILON 0.000001
 
-float h = 10.0f;
+float h = 5.0f;
 float referenceDensity = 1.0f;
-float pressureConstant = 250.0f;
+float pressureConstant = 25.0f;
 float viscosity = 0.018f;
+float SPHdeltaTime = 0.016f;
+float particleMass = 100.0f;
 
-const float Poly6_Const = 315.0f / (64.0f * PI * pow(h, 9));
-const float Spiky_Const = -45.0f / (PI * pow(h, 6));
+const float Poly6_Const = static_cast<float>(315.0f / (64.0f * PI * pow(h, 9)));
+const float Spiky_Const = static_cast<float>(-45.0f / (PI * pow(h, 6)));
 vec3 G{ 0.0f, -9.82f, 0.0 };
 /* ********** */
 
@@ -147,10 +149,30 @@ void generateNewParticles(double *delta) {
 
 	for (int i = 0; i < newparticles; i++) {
 		if (nextParticle < MaxParticles) {
-			ParticlesContainer[nextParticle].pos = glm::vec3(4.0f, 1.0f, 5.0f);
+
+			// x: 3->8, y: 12->15, z: 2->8
+			/*float  xRel = 3 + (rand() % (8 - 3 + 1));
+			float yRel = 12 + (rand() % (15 - 12 + 1));
+			float zRel = 2 + (rand() % (8 - 2 + 1));*/
+
+
+			float xL = 0.3f, xH = 0.8f;
+			float yL = 1.2f, yH = 1.5f;
+			float zL = 0.2f, zH = 0.8f;
+			vec3 tempPos = vec3(
+				xL + static_cast<float>(rand()) / static_cast<float>(RAND_MAX / (xH - xL)),
+				yL + static_cast<float>(rand()) / static_cast<float>(RAND_MAX / (yH - yL)),
+				zL + static_cast<float>(rand()) / static_cast<float>(RAND_MAX / (zH - zL))
+			);
+
+			//printf("Pos: x=%f, y=%f, z=%f\n", tempPos.x, tempPos.y, tempPos.z);
+			
+			ParticlesContainer[nextParticle].pos = tempPos;
+			ParticlesContainer[nextParticle].weight = particleMass;
+			ParticlesContainer[nextParticle].density = referenceDensity;
 
 			float spread = 1.5f;
-			glm::vec3 maindir = glm::vec3(0.0f, 10.0f, 0.0f);
+			glm::vec3 maindir = glm::vec3(0.0f, 1.0f, 0.0f);
 			// Very bad way to generate a random direction; 
 			// See for instance http://stackoverflow.com/questions/5408276/python-uniform-spherical-distribution instead,
 			// combined with some user-controlled parameters (main direction, spread, etc)
@@ -169,7 +191,9 @@ void generateNewParticles(double *delta) {
 			ParticlesContainer[nextParticle].b = rand() % 256;
 			ParticlesContainer[nextParticle].a = 255;//(rand() % 256) / 3;
 
-			ParticlesContainer[nextParticle].size = (rand() % 1000) / 2000.0f + 0.1f;
+			//ParticlesContainer[nextParticle].size = (rand() % 1000) / 2000.0f + 0.1f;
+
+			ParticlesContainer[nextParticle].size = 0.1f;
 
 			nextParticle++;
 		}
@@ -420,123 +444,150 @@ int main(void)
 		for (int ParticlesCount = 0; ParticlesCount < nextParticle; ParticlesCount++) {
 
 			Particle& pA = ParticlesContainer[ParticlesCount]; // shortcut
+			//printf("Pos: %f, %f, %f\n", pA.pos.x, pA.pos.y, pA.pos.z);
 
 			// Simulate simple physics : gravity only, no collisions
-			/*p.speed += glm::vec3(0.0f, -9.82f, 0.0f) * (float)delta * 0.5f;
-			p.pos += p.speed * (float)delta;
+			/*pA.speed += glm::vec3(0.0f, -9.82f, 0.0f) * (float)delta * 0.5f;
+			pA.pos += pA.speed * (float)delta;
 
-			p.pos.x = min(p.pos.x, 15.0f);
-			p.pos.y = min(p.pos.y, 20.0f);
-			p.pos.z = min(p.pos.z, 10.0f);
+			pA.pos.x = min(pA.pos.x, 15.0f);
+			pA.pos.y = min(pA.pos.y, 20.0f);
+			pA.pos.z = min(pA.pos.z, 10.0f);
 			
-			p.pos.x = max(p.pos.x, 0.0f);
-			p.pos.y = max(p.pos.y, 0.0f);
-			p.pos.z = max(p.pos.z, 0.0f);*/
+			pA.pos.x = max(pA.pos.x, 0.0f);
+			pA.pos.y = max(pA.pos.y, 0.0f);
+			pA.pos.z = max(pA.pos.z, 0.0f);*/
 
+			
 			for(int i = 0; i < nextParticle; i++)
 			{
-				if (length(ParticlesContainer[i].pos - pA.pos) < h)
+				if (length(ParticlesContainer[i].pos - pA.pos) > 5.0f)
 				{
-					Particle& pB = ParticlesContainer[i];
-					
-					pA.density = 0.0;
-
-					vec3 diff = pA.pos - pB.pos;
-					float r2 = dot(diff, diff);
-					if (r2 < pow(h, 2))
-					{
-						float W = Poly6_Const * pow(pow(h, 2) - r2, 3);
-						pA.density += pA.weight * W;
-					}
-					pA.density = max(referenceDensity, pA.density);
-					
-					if (i != ParticlesCount)
-					{
-						pA.force = vec3(0.0);
-						vec3 tempForce{ 0.0 };
-
-						float r = sqrt(dot(diff, diff));
-						if (r > 0 && r < h)
-						{
-							vec3 rNorm = diff / r;
-							float W1 = Spiky_Const * pow(h - r, 2);
-
-							float r3 = pow(r, 3);
-							float W2 = -(r3 / (2.0f * pow(h, 3)) + (pow(r, 2) / pow(h, 2)) + h / (2.0f * r)) - 1.0f;
-
-							pA.force += ((pressureConstant * (pA.density - referenceDensity) + pressureConstant * (pB.density - referenceDensity)) / (2.0f * pA.density * pB.density)) * W1 * rNorm;
-							tempForce += (1.0f / pB.density) * (pB.speed - pA.speed) * W2 * rNorm;
-						}
-						
-						pA.force *= -1.0f;
-
-						tempForce *= viscosity;
-
-						pA.speed += (float)delta * ((pA.force + tempForce) / pA.density + G) * 0.01f;
-
-						vec3 tempPos = pA.pos + (float)delta * pA.speed;
-
-						vec3 xNorm{ 1.0, 1.0, 0.0 }, yNorm{ 0.0, 1.0, 0.0 }, zNorm{ 0.0, 0.0, 1.0 };
-
-						if (tempPos.x < 0.0)
-						{
-							//pA.speed *= -1.0f;
-						
-							pA.speed = pA.speed - 2 * dot(pA.speed, xNorm) * xNorm;
-							pA.pos.x = max(pA.pos.x, 0.0f);
-						}
-						else if (tempPos.x > 15.0f)
-						{
-							//pA.speed *= -1.0f;
-
-							pA.speed = pA.speed - 2 * dot(pA.speed, -xNorm) * -xNorm;
-							pA.pos.x = min(pA.pos.x, 15.0f);
-						}
-
-						if (tempPos.y < 0.0)
-						{
-							//pA.speed *= -1.0f;
-							
-							pA.speed = pA.speed - 2 * dot(pA.speed, yNorm) * yNorm;
-							pA.pos.y = max(pA.pos.y, 0.0f);
-						}
-						else if (tempPos.y > 20.0f)
-						{
-							//pA.speed *= -1.0f;
-							
-							pA.speed = pA.speed - 2 * dot(pA.speed, -yNorm) * -yNorm;
-							pA.pos.y = min(pA.pos.y, 20.0f);
-						}
-
-						if (tempPos.z < 0.0)
-						{
-							//pA.speed *= -1.0f;
-							
-							pA.speed = pA.speed - 2 * dot(pA.speed, zNorm) * zNorm;
-							pA.pos.z = max(pA.pos.z, 0.0f);
-						}
-						else if (tempPos.z > 10.0f)
-						{
-							//pA.speed *= -1.0f;
-							
-							pA.speed = pA.speed - 2 * dot(pA.speed, -zNorm) * -zNorm;
-							pA.pos.z = min(pA.pos.z, 10.0f);
-						}
-
-						pA.pos += (float)delta * pA.speed;
-
-						//printf("Speed: %f, %f, %f\n", pA.speed.x, pA.speed.y, pA.speed.z);
-						//printf("Pos: %f, %f, %f\n", pA.pos.x, pA.pos.y, pA.pos.z);
-
-						pA.force = vec3(0.0);
-						
-					}
+					continue;
 				}
+				Particle& pB = ParticlesContainer[i];
+				
+				pA.density = 0.0f;
+
+				vec3 diff = pA.pos - pB.pos;
+				float r2 = dot(diff, diff);
+				if (r2 < pow(h, 2))
+				{
+					float W = Poly6_Const * pow(pow(h, 2) - r2, 3);
+					pA.density +=  pB.weight * W;
+				}
+				pA.density = max(referenceDensity, pA.density);
+				
+				if (i != ParticlesCount)
+				{
+					pA.force = vec3(0.0f);
+					vec3 tempForce{ 0.0f };
+
+					float r = sqrt(dot(diff, diff));
+					if (r > 0 && r < h)
+					{
+						vec3 rNorm = diff / r;
+						float W1 = Spiky_Const * pow(h - r, 2);
+
+						float r3 = pow(r, 3);
+						float W2 = -(r3 / (2.0f * pow(h, 3)) + (pow(r, 2) / pow(h, 2)) + h / (2.0f * r)) - 1.0f;
+
+						float pApressForce = pressureConstant * (pA.density - referenceDensity);
+						float pBpressForce = pressureConstant * (pB.density - referenceDensity);
+						
+						pA.force += (pB.weight / pA.weight) * ((pApressForce + pBpressForce) / (2.0f * pA.density * pB.density)) * W1 * rNorm;
+						tempForce += (pB.weight / pA.weight) * (1.0f / pB.density) * (pB.speed - pA.speed) * W2 * rNorm;
+					}
+					
+					pA.force *= -1.0f;
+
+					tempForce *= viscosity;
+
+					pA.speed += static_cast<float>(delta) * ((pA.force + tempForce) / pA.density + G) * 0.01f;
+					//printf("Length: %f\n", length(pA.speed));
+				}
+
+				vec3 tempPos = pA.pos + static_cast<float>(delta) * pA.speed;
+
+				//printf("Pos: %f, %f, %f\n", tempPos.x, tempPos.y, tempPos.z);
+
+				vec3 xNorm{ 1.0f, 1.0f, 0.0f }, yNorm{ 0.0f, 1.0f, 0.0f }, zNorm{ 0.0f, 0.0f, 1.0f };
+				//xNorm *= 0.1f;
+				//yNorm *= 0.1f;
+				//zNorm *= 0.1f;
+
+				if (tempPos.x < 0.0f)
+				{
+					//pA.speed *= -1.0f;
+
+					pA.speed -= 2.0f * dot(normalize(pA.speed), xNorm) * xNorm;// *.1f;
+					//pA.pos.x = max(pA.pos.x, 0.0f);
+				}
+				else if (tempPos.x > 1.5f)
+				{
+					//pA.speed *= -1.0f;
+
+					pA.speed -= 2.0f * dot(normalize(pA.speed), (-1.0f * xNorm)) * (-1.0f * xNorm);// *.1f;
+					//pA.pos.x = min(pA.pos.x, 15.0f);
+				}
+
+				if (tempPos.y < 0.0f)
+				{
+					//pA.speed *= -1.0f;
+
+					pA.speed -= 2.0f * dot(normalize(pA.speed), yNorm) * yNorm;// *.1f;
+					//pA.pos.y = max(pA.pos.y, 0.0f);
+				}
+				else if (tempPos.y > 2.0f)
+				{
+					//pA.speed *= -1.0f;
+
+					pA.speed -= 2.0f * dot(normalize(pA.speed), (-1.0f * yNorm)) * (-1.0f * yNorm);// *.1f;
+					//pA.pos.y = min(pA.pos.y, 20.0f);
+				}
+
+				if (tempPos.z < 0.0f)
+				{
+					//pA.speed *= -1.0f;
+
+					pA.speed -= 2.0f * dot(normalize(pA.speed), zNorm) * zNorm;// *.1f;
+					//pA.pos.z = max(pA.pos.z, 0.0f);
+				}
+				else if (tempPos.z > 1.0f)
+				{
+					//pA.speed *= -1.0f;
+
+					pA.speed -= 2.0f * dot(normalize(pA.speed), (-1.0f * zNorm)) * (-1.0f * zNorm);// *.1f;
+					//pA.pos.z = min(pA.pos.z, 10.0f);
+				}
+				//printf("ParticleCount: %i, i: %i\n", ParticlesCount, i);
+				//printf("nextParticle: %i\n", nextParticle);
+
+				
 			}
 
-			//checkNeighbour(pA, delta, ParticlesCount);
+			//printf("ParticleCount: %i\n", ParticlesCount);
 
+			
+			
+			pA.pos += static_cast<float>(delta) * pA.speed;
+
+			pA.pos.x = min(pA.pos.x, 1.5f);
+			pA.pos.y = min(pA.pos.y, 2.0f);
+			pA.pos.z = min(pA.pos.z, 1.0f);
+
+			pA.pos.x = max(pA.pos.x, 0.0f);
+			pA.pos.y = max(pA.pos.y, 0.0f);
+			pA.pos.z = max(pA.pos.z, 0.0f);
+
+			//printf("Speed: %f, %f, %f\n", pA.speed.x, pA.speed.y, pA.speed.z);
 			//printf("Pos: %f, %f, %f\n", pA.pos.x, pA.pos.y, pA.pos.z);
+
+			pA.force = vec3(0.0f);
+
+			//checkNeighbour(pA, delta, ParticlesCount);
+			
+			//printf("Pos: %f, %f, %f\n", pA.speed.x, pA.speed.y, pA.speed.z);
 			
 			pA.cameradistance = glm::length2(pA.pos - CameraPosition);			
 
