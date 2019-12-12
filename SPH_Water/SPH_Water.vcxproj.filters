@@ -101,12 +101,18 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="Shaders\EriksQuicky.vert">
-	  <Filter>Shaders</Filter>
-	</None>
+      <Filter>Shaders</Filter>
+    </None>
     <None Include="Shaders\SPHShader.frag">
       <Filter>Shaders</Filter>
     </None>
     <None Include="Shaders\SPHShader.vert">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\renderWaterBalls.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\renderWaterBalls.vert">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

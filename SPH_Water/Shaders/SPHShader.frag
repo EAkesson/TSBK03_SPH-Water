@@ -26,7 +26,7 @@ float particleMass = 10.0;
 float particleRadius = 1.0; 
 float h = 5.0;
 float referenceDensity = 1.0; 
-float pressureConstant = 250.0; 
+float pressureConstant = 0.1; 
 float viscosity = 0.018;
 
 // Constants

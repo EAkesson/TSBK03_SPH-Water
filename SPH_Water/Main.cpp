@@ -41,7 +41,8 @@ Model* squareModel;
 
 //----------------------Globals-------------------------------------------------
 FBOstruct *fboParticle1, *fboParticle2, *fboScreen, *fboParticlePos1, *fboParticlePos2, *fboParticleVel1, *fboParticleVel2;
-GLuint physicShader = 0, renderShader = 0, initPartTexShader = 0, calcNewPosShader = 0, simpelDrawShader=0, loadTexToFBOShader = 0, emptyTextureShader = 0, enQuickie= 0, SPH_Shader = 0;
+GLuint physicShader = 0, renderShader = 0, initPartTexShader = 0, calcNewPosShader = 0, simpelDrawShader=0, loadTexToFBOShader = 0,
+		emptyTextureShader = 0, enQuickie= 0, SPH_Shader = 0, renderWaterBallsShader = 0;
 
 // For fps counter
 double lastTime = 0.0;
@@ -50,13 +51,14 @@ int nbFrames = 0;
 const int MaxParticles = 10000;
 //Particle ParticlesContainer[MaxParticles];
 //int nextParticle = 0;
-const int WindowWidth = 4000;
-const int WindowHeight = 4000;
+const int WindowWidth = 1280;
+const int WindowHeight = 720;
 const int textureSize = 4000;
 
 static GLbyte posTexture[textureSize][textureSize][4];
 static GLbyte velTexture[textureSize][textureSize][4];
 static GLuint posTexName, velTexName, posTexImName, velTexImName;
+static GLuint billboard_vertex_buffer;
 //---------------------------------------------------------------------------
 
 void calcFPS()
@@ -245,6 +247,7 @@ void initShaders() {
 	emptyTextureShader = loadShaders("Shaders/emptyTexture.vert", "Shaders/emptyTexture.frag");
 	enQuickie = loadShaders("Shaders/EriksQuicky.vert", "Shaders/EriksQuicky.frag");
 	SPH_Shader = loadShaders("Shaders/SPHShader.vert", "Shaders/SPHShader.frag");
+	renderWaterBallsShader = loadShaders("Shaders/renderWaterBalls.vert", "Shaders/renderWaterBalls.frag");
 }
 
 void initFBOs() {
@@ -334,11 +337,66 @@ void renderTexure(GLuint shader, FBOstruct *posFBO, FBOstruct *velFBO) {
 	glFlush();
 }
 
+void renderBalls(GLuint shader, GLuint partTex, FBOstruct *posFBO, FBOstruct *velFBO, mat4 ViewMatrix, mat4 ViewProjectionMatrix)
+{
+	glUseProgram(shader);
+	glDisable(GL_CULL_FACE);
+	glDisable(GL_DEPTH_TEST);
+	glUniform1i(glGetUniformLocation(shader, "texPos"), 0);
+	glUniform1i(glGetUniformLocation(shader, "texVel"), 1);
+	glUniform1f(glGetUniformLocation(shader, "texSize"), textureSize);
+	glUniform1f(glGetUniformLocation(shader, "windowWidth"), WindowWidth);
+	glUniform1f(glGetUniformLocation(shader, "windowHeight"), WindowHeight);
+
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, partTex);
+	glUniform1i(glGetUniformLocation(shader, "particleSampler"), 2);	
+
+	glUniform3f(glGetUniformLocation(shader, "CameraRight_worldspace"), ViewMatrix[0][0], ViewMatrix[1][0], ViewMatrix[2][0]);
+	glUniform3f(glGetUniformLocation(shader, "CameraUp_worldspace"), ViewMatrix[0][1], ViewMatrix[1][1], ViewMatrix[2][1]);
+	glUniformMatrix4fv(glGetUniformLocation(shader, "VP"), 1, GL_FALSE, &ViewProjectionMatrix[0][0]);
+
+	GLuint loc = glGetAttribLocation(shader, "squareVertices");
+	glEnableVertexAttribArray(loc);
+	glBindBuffer(GL_ARRAY_BUFFER, billboard_vertex_buffer);
+	glVertexAttribPointer(
+		loc,                  // attribute. No particular reason for 0, but must match the layout in the shader.
+		3,                  // size
+		GL_FLOAT,           // type
+		GL_FALSE,           // normalized?
+		0,                  // stride
+		0            // array buffer offset
+	);
+
+	//glVertexAttribDivisor(loc, 0);
+	
+	useFBO(0L, posFBO, velFBO);
+	DrawModel(squareModel, shader, "in_Position", NULL, "in_TexCoord");
+	glFlush();
+
+	//glDisableVertexAttribArray(loc);
+	
+}
+
 void display() {
 
 	int framenum = 0;
 	double lastTime_Local = glfwGetTime(), currentTime;
 	float deltaTime;
+
+	GLuint particleTexture = loadDDS("particle.DDS");
+
+	// The VBO containing the 4 vertices of the particles.
+	// Thanks to instancing, they will be shared by all particles.
+	static const GLfloat g_vertex_buffer_data[] = {
+		 -0.5f, -0.5f, 0.0f,
+		  0.5f, -0.5f, 0.0f,
+		 -0.5f,  0.5f, 0.0f,
+		  0.5f,  0.5f, 0.0f,
+	};	
+	glGenBuffers(1, &billboard_vertex_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, billboard_vertex_buffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
 
 	//Upload texture to GPU		
 	glGenTextures(1, &posTexName);
@@ -372,6 +430,16 @@ void display() {
 		deltaTime = (float)(currentTime - lastTime_Local);
 		lastTime_Local = currentTime;
 
+		computeMatricesFromInputs();
+		mat4 ProjectionMatrix = getProjectionMatrix();
+		mat4 ViewMatrix = getViewMatrix();
+		mat4 ViewProjectionMatrix = ProjectionMatrix * ViewMatrix;
+			// We will need the camera's position in order to sort the particles
+			// w.r.t the camera's distance.
+			// There should be a getCameraPosition() function in common/controls.cpp, 
+			// but this works too.
+			//glm::vec3 CameraPosition(glm::inverse(ViewMatrix)[3]);
+		
 		
 		useFBOwithTex(SPH_Shader, fboParticlePos2, fboParticleVel1, fboParticleVel2, deltaTime);
 		DrawModel(squareModel, SPH_Shader, "in_Position", NULL, "in_TexCoord");
@@ -391,8 +459,9 @@ void display() {
 		emptyTextures();
 		
 
-		renderTexure(simpelDrawShader, fboParticlePos2, 0L);
+		//renderTexure(simpelDrawShader, fboParticlePos2, 0L);
 		//renderTexure(simpelDrawShader, fboParticleVel1, 0L);
+		renderBalls(renderWaterBallsShader, particleTexture, fboParticlePos2, fboParticleVel1, ViewMatrix, ViewProjectionMatrix);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -424,7 +493,7 @@ int main(void)
 	initShaders();
 	initFBOs();
 	initTexture();
-	spawnParticle(100000);
+	spawnParticle(100);
 
 	squareModel = LoadDataToModel(
 		square, NULL, squareTexCoord, NULL,
