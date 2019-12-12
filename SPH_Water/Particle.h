@@ -5,8 +5,8 @@ using namespace glm;
 
 struct Particle
 {
-	glm::vec3 pos, speed, force;
-	float density;
+	glm::vec3 pos, speed, force, force2;
+	float density, pressure;
 
 
 	
