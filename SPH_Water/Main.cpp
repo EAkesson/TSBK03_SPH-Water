@@ -60,7 +60,7 @@ void calcFPS()
 	}
 }
 
-const int MaxParticles = 100;
+const int MaxParticles = 200;
 Particle ParticlesContainer[MaxParticles];
 int nextParticle = 0;
 const int WindowWidth = 1024;
@@ -71,17 +71,19 @@ const int WindowHeight = 768;
 #define PI 3.14159
 #define EPSILON 0.000001
 
-float h = 5.0f;
-float referenceDensity = 1.0f;
-float pressureConstant = 25.0f;
-float viscosity = 0.018f;
-float SPHdeltaTime = 0.016f;
-float particleMass = 1.0f;
+float referenceDensity = 1.0f; //1.0
+float pressureConstant = 250.0f; //250
+float viscosity = 0.018f; //0.018
+float particleMass = 0.02f;
 float particleSize = 0.1f;
+
+float sphRadius = particleSize * 5.0f; //Radius on which particle that affect eachother
+float h = particleSize * 4.0f; //Smoothing radius
 
 const float Poly6_Const = static_cast<float>(315.0f / (64.0f * PI * pow(h, 9)));
 const float Spiky_Const = static_cast<float>(-45.0f / (PI * pow(h, 6)));
 vec3 G{ 0.0f, -9.82f, 0.0 };
+
 /* ********** */
 
 void SortParticles() {
@@ -144,9 +146,9 @@ void generateNewParticles(double *delta) {
 	// Generate 10 new particule each millisecond,
 		// but limit this to 16 ms (60 fps), or if you have 1 long frame (1sec),
 		// newparticles will be huge and the next frame even longer.
-	int newparticles = (int)(*delta*1000.0);
-	if (newparticles > (int)(0.016f*1000.0))
-		newparticles = (int)(0.016f*1000.0);
+	int newparticles = 2;//(int)(*delta*1000.0);
+	/*if (newparticles > (int)(0.016f*1000.0))
+		newparticles = (int)(0.016f*1000.0);*/
 
 	for (int i = 0; i < newparticles; i++) {
 		if (nextParticle < MaxParticles) {
@@ -171,6 +173,7 @@ void generateNewParticles(double *delta) {
 			ParticlesContainer[nextParticle].pos = tempPos;
 			ParticlesContainer[nextParticle].weight = particleMass;
 			ParticlesContainer[nextParticle].density = referenceDensity;
+			ParticlesContainer[nextParticle].pressure = 0.0f;
 
 			float spread = 1.5f;
 			glm::vec3 maindir = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -201,67 +204,77 @@ void generateNewParticles(double *delta) {
 	}
 }
 
-void setBoundingBoxWithPosAndSpeed(Particle pA, float deltaTime)
+void checkWalls(Particle *pA)
 {
-	pA.speed += static_cast<float>(deltaTime) * ((pA.force + pA.force2) / pA.density + G) * 0.01f;
+	const float x_min = 0.0f;
+	const float x_max = 1.5f/2.0f;
+	const float y_min = 0.0f;
+	const float y_max = 2.0f / 2.0f;
+	const float z_min = 0.0f;
+	const float z_max = 1.0f / 2.0f;
+
+	const float wall_bounce = 0.9f;
 	
-	vec3 tempPos = pA.pos + static_cast<float>(deltaTime) * pA.speed;
-
-	//printf("Pos: %f, %f, %f\n", tempPos.x, tempPos.y, tempPos.z);
-
 	vec3 xNorm{ 1.0f, 1.0f, 0.0f }, yNorm{ 0.0f, 1.0f, 0.0f }, zNorm{ 0.0f, 0.0f, 1.0f };
-	//xNorm *= 0.1f;
-	//yNorm *= 0.1f;
-	//zNorm *= 0.1f;
-
-	if (tempPos.x < 0.0f)
+	if (pA->pos.x < x_min)
 	{
 		//pA.speed *= -1.0f;
 
-		pA.speed -= 2.0f * dot(normalize(pA.speed), xNorm) * xNorm;// *.1f;
+		//pA->speed -= 2.0f * dot(normalize(pA->speed), xNorm) * xNorm *wall_bounce;
+		pA->speed.x *= -1.0f * wall_bounce;
 		//pA.pos.x = max(pA.pos.x, 0.0f);
 	}
-	else if (tempPos.x > 1.5f)
+	else if (pA->pos.x > x_max)
 	{
 		//pA.speed *= -1.0f;
 
-		pA.speed -= 2.0f * dot(normalize(pA.speed), (-1.0f * xNorm)) * (-1.0f * xNorm);// *.1f;
+		//pA->speed -= 2.0f * dot(normalize(pA->speed), (-1.0f * xNorm)) * (-1.0f * xNorm) *wall_bounce;
+		pA->speed.x *= -1.0f * wall_bounce;
 		//pA.pos.x = min(pA.pos.x, 15.0f);
 	}
 
-	if (tempPos.y < 0.0f)
+	if (pA->pos.y < y_min)
 	{
 		//pA.speed *= -1.0f;
 
-		pA.speed -= 2.0f * dot(normalize(pA.speed), yNorm) * yNorm;// *.1f;
+		//pA->speed -= 2.0f * dot(normalize(pA->speed), yNorm) * yNorm *wall_bounce;
+		pA->speed.y *= -1.0f * wall_bounce;
 		//pA.pos.y = max(pA.pos.y, 0.0f);
 	}
-	else if (tempPos.y > 2.0f)
+	/*else if (pA->pos.y > y_max)
 	{
 		//pA.speed *= -1.0f;
 
-		pA.speed -= 2.0f * dot(normalize(pA.speed), (-1.0f * yNorm)) * (-1.0f * yNorm);// *.1f;
+		pA->speed -= 2.0f * dot(normalize(pA->speed), (-1.0f * yNorm)) * (-1.0f * yNorm) *wall_bounce;
 		//pA.pos.y = min(pA.pos.y, 20.0f);
-	}
+	}*/
 
-	if (tempPos.z < 0.0f)
+	if (pA->pos.z < z_min)
 	{
 		//pA.speed *= -1.0f;
 
-		pA.speed -= 2.0f * dot(normalize(pA.speed), zNorm) * zNorm;// *.1f;
+		//pA->speed -= 2.0f * dot(normalize(pA->speed), zNorm) * zNorm *wall_bounce;
+		pA->speed.z *= -1.0f * wall_bounce;
 		//pA.pos.z = max(pA.pos.z, 0.0f);
 	}
-	else if (tempPos.z > 1.0f)
+	else if (pA->pos.z > z_max)
 	{
 		//pA.speed *= -1.0f;
 
-		pA.speed -= 2.0f * dot(normalize(pA.speed), (-1.0f * zNorm)) * (-1.0f * zNorm);// *.1f;
+		//pA->speed -= 2.0f * dot(normalize(pA->speed), (-1.0f * zNorm)) * (-1.0f * zNorm) *wall_bounce;
+		pA->speed.z *= -1.0f * wall_bounce;
 		//pA.pos.z = min(pA.pos.z, 10.0f);
 	}
-	//printf("ParticleCount: %i, i: %i\n", ParticlesCount, i);
-	//printf("nextParticle: %i\n", nextParticle);
-}
 
+	pA->pos.x = min(pA->pos.x, x_max);
+	//pA->pos.y = min(pA->pos.y, 2.0f);
+	pA->pos.z = min(pA->pos.z, z_max);
+
+	pA->pos.x = max(pA->pos.x, x_min);
+	pA->pos.y = max(pA->pos.y, y_min);
+	pA->pos.z = max(pA->pos.z, z_min);
+}
+/*
 void calcPressure(Particle pA, Particle pB)
 {
 	pA.density = 0.0f;
@@ -326,10 +339,12 @@ void checkNeighbour(Particle pA, float deltaTime, int currElement)
 				calcForce(pA, pB);
 				calcViscosity(pA, pB, deltaTime);
 			}
-			setBoundingBoxWithPosAndSpeed(pA, deltaTime);
+			//setBoundingBoxWithPosAndSpeed(pA, deltaTime);
 		}
 	}
 }
+
+*/
 
 int main(void)
 {
@@ -459,22 +474,26 @@ int main(void)
 			pA.pos.y = max(pA.pos.y, 0.0f);
 			pA.pos.z = max(pA.pos.z, 0.0f);*/
 
+			pA.density = 0.0f;
+			pA.force = vec3(0.0f);
+			pA.force2 = vec3(0.0f);
 			
 			for(int i = 0; i < nextParticle; i++)
 			{
-				if (length(ParticlesContainer[i].pos - pA.pos) > 5.0f)
+				if (length(ParticlesContainer[i].pos - pA.pos) < sphRadius)
 				{
 					continue;
 				}
 				Particle& pB = ParticlesContainer[i];
 				
-				pA.density = 0.0f;
+				
 
 				vec3 diff = pA.pos - pB.pos;
 				float r2 = dot(diff, diff);
-				if (r2 < pow(h, 2))
+				float h2 = pow(h, 2);
+				if (r2 < h2)
 				{
-					float W = Poly6_Const * pow(pow(h, 2) - r2, 3);
+					float W = Poly6_Const * pow(h2 - r2, 3);
 					pA.density +=  pB.weight * W;
 				}
 				pA.density = max(referenceDensity, pA.density);
@@ -483,8 +502,6 @@ int main(void)
 				
 				if (i != ParticlesCount)
 				{
-					pA.force = vec3(0.0f);
-
 					float r = sqrt(dot(diff, diff));
 					if (r > 0 && r < h)
 					{
@@ -498,103 +515,55 @@ int main(void)
 						pA.force2 += (pB.weight / pA.weight) * (1.0f / pB.density) * (pB.speed - pA.speed) * W2 * rNorm;
 					}
 
-
-					// Collision?!??
-					if(r < 2 * particleSize && dot(pA.speed, diff) < dot(pB.speed, diff))
-					{
-						float vNeRel = dot(diff, normalize(diff * -1.0f));
-						float jForm = (-(EPSILON + 1.0f) * vNeRel) / (1.0f / pA.weight + 1.0f / pB.weight);
-						vec3 Imp = normalize(diff) * jForm;
-						//printf("Imp: %f, %f, %f -- vNe: %f -- jForm: %f\n", Imp.x, Imp.y, Imp.z, vNeRel, jForm);
-						pA.force = pA.force + (Imp * (-1.0f / static_cast<float>(delta)));
-						pB.force = pA.force + (Imp * ( 1.0f / static_cast<float>(delta)));
-					}
-					
-					pA.force *= -1.0f;
-
-					pA.force2 *= viscosity;
-
-					pA.speed += static_cast<float>(delta) * ((pA.force + pA.force2) / pA.density + G) * 0.01f;
-					//printf("Length: %f\n", length(pA.speed));
 				}
 
-				vec3 tempPos = pA.pos + static_cast<float>(delta) * pA.speed;
+				//vec3 tempPos = pA.pos + static_cast<float>(delta) * pA.speed;
 
 				//printf("Pos: %f, %f, %f\n", tempPos.x, tempPos.y, tempPos.z);
 
-				vec3 xNorm{ 1.0f, 1.0f, 0.0f }, yNorm{ 0.0f, 1.0f, 0.0f }, zNorm{ 0.0f, 0.0f, 1.0f };
-				//xNorm *= 0.1f;
-				//yNorm *= 0.1f;
-				//zNorm *= 0.1f;
-
-				if (tempPos.x < 0.0f)
-				{
-					//pA.speed *= -1.0f;
-
-					pA.speed -= 2.0f * dot(normalize(pA.speed), xNorm) * xNorm *.9f;
-					//pA.pos.x = max(pA.pos.x, 0.0f);
-				}
-				else if (tempPos.x > 1.5f)
-				{
-					//pA.speed *= -1.0f;
-
-					pA.speed -= 2.0f * dot(normalize(pA.speed), (-1.0f * xNorm)) * (-1.0f * xNorm) *.9f;
-					//pA.pos.x = min(pA.pos.x, 15.0f);
-				}
-
-				if (tempPos.y < 0.0f)
-				{
-					//pA.speed *= -1.0f;
-
-					pA.speed -= 2.0f * dot(normalize(pA.speed), yNorm) * yNorm *.9f;
-					//pA.pos.y = max(pA.pos.y, 0.0f);
-				}
-				else if (tempPos.y > 2.0f)
-				{
-					//pA.speed *= -1.0f;
-
-					pA.speed -= 2.0f * dot(normalize(pA.speed), (-1.0f * yNorm)) * (-1.0f * yNorm) *.9f;
-					//pA.pos.y = min(pA.pos.y, 20.0f);
-				}
-
-				if (tempPos.z < 0.0f)
-				{
-					//pA.speed *= -1.0f;
-
-					pA.speed -= 2.0f * dot(normalize(pA.speed), zNorm) * zNorm *.9f;
-					//pA.pos.z = max(pA.pos.z, 0.0f);
-				}
-				else if (tempPos.z > 1.0f)
-				{
-					//pA.speed *= -1.0f;
-
-					pA.speed -= 2.0f * dot(normalize(pA.speed), (-1.0f * zNorm)) * (-1.0f * zNorm) *.9f;
-					//pA.pos.z = min(pA.pos.z, 10.0f);
-				}
+				
 				//printf("ParticleCount: %i, i: %i\n", ParticlesCount, i);
 				//printf("nextParticle: %i\n", nextParticle);
 
 				
 			}
-			//printf("ParticleCount: %i\n", ParticlesCount);
 
-			//checkNeighbour(pA, delta, ParticlesCount);
+			pA.force *= -1.0f;
+			pA.force2 *= viscosity;			
+
+			pA.force = ((pA.force + pA.force2) / pA.density + G);
 			
+			// Collision?!??
+			float epsi = 1.0f;
+			for (int i = 0; i < nextParticle; i++)
+			{				
+				Particle& pB = ParticlesContainer[i];
+				vec3 diff = pA.pos - pB.pos;
+				float r = sqrt(dot(diff, diff));
+				
+				if(r < 2 * particleSize && dot(pA.speed, diff) < dot(pB.speed, diff))
+				{
+					float vNeRel = dot(pA.speed-pB.speed, normalize(diff) * -1.0f);
+					float jForm = (-(epsi + 1.0f) * vNeRel) / (1.0f / pA.weight + 1.0f / pB.weight);
+					vec3 Imp = normalize(diff) * jForm;
+					//printf("Imp: %f, %f, %f -- vNe: %f -- jForm: %f\n", Imp.x, Imp.y, Imp.z, vNeRel, jForm);
+					pA.force = pA.force + (Imp * (-1.0f / static_cast<float>(delta)));
+					pB.force = pB.force + (Imp * ( 1.0f / static_cast<float>(delta)));
+				}
+				//printf("Length: %f\n", length(pA.speed));
+			}
 			
+
+			pA.speed += static_cast<float>(delta) * pA.force;
 			pA.pos += static_cast<float>(delta) * pA.speed;
-
-			pA.pos.x = min(pA.pos.x, 1.5f);
-			pA.pos.y = min(pA.pos.y, 2.0f);
-			pA.pos.z = min(pA.pos.z, 1.0f);
-
-			pA.pos.x = max(pA.pos.x, 0.0f);
-			pA.pos.y = max(pA.pos.y, 0.0f);
-			pA.pos.z = max(pA.pos.z, 0.0f);
-
+			
+			checkWalls(&pA);
+			
 			//printf("Speed: %f, %f, %f\n", pA.speed.x, pA.speed.y, pA.speed.z);
 			//printf("Pos: %f, %f, %f\n", pA.pos.x, pA.pos.y, pA.pos.z);
 
 			pA.force = vec3(0.0f);
+			pA.force2 = vec3(0.0f);
 
 			//checkNeighbour(pA, delta, ParticlesCount);
 			
