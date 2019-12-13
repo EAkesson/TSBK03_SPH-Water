@@ -56,6 +56,8 @@ const float y_max = 2.0f / 2.0f;
 const float z_min = 0.0f;
 const float z_max = 1.0f / 2.0f;
 
+float wallSpeed = 0.0f, stdWallSpeed = 2.0f;
+
 static GLfloat* g_particule_position_size_data = new GLfloat[MaxParticles * 4];
 static GLubyte* g_particule_color_data = new GLubyte[MaxParticles * 4];
 
@@ -238,6 +240,15 @@ void updateControllable(Particle *pA, int ParticlesCount, float deltaT)
 {
 	float speed = 1.0f;
 
+	if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS)
+	{
+		pA->size += 0.05;
+	}
+	if (glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS)
+	{
+		pA->size -= 0.05;
+	}
+
 	pA->speed = vec3(0.0f);
 	
 	if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
@@ -280,25 +291,33 @@ void updateControllable(Particle *pA, int ParticlesCount, float deltaT)
 	g_particule_color_data[4 * ParticlesCount + 3] = pA->a;
 }
 
-void checkWalls(Particle *pA, float delta)
-{
-	float wallSpeed = 0.01f;
+void moveWall(float delta)
+{	
 	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS)
 	{
+		wallSpeed = stdWallSpeed;
 		x_min += wallSpeed * delta;
-		if (x_min > x_max - particleSize*2.0f)
-			x_min = x_max - particleSize*2.0f;
+		if (x_min > x_max - particleSize * 2.0f)
+			x_min = x_max - particleSize * 2.0f;
 	}
-	else if(glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS)
+	else if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS)
 	{
-		x_min -= wallSpeed * delta;
+		wallSpeed = -stdWallSpeed;
+		x_min += wallSpeed * delta;
+	}else
+	{
+		wallSpeed = 0.0f;
 	}
+}
 
+
+void checkWalls(Particle *pA, float delta)
+{
 	const float wall_bounce = 0.9f;
 	
 	vec3 xNorm{ 1.0f, 1.0f, 0.0f }, yNorm{ 0.0f, 1.0f, 0.0f }, zNorm{ 0.0f, 0.0f, 1.0f };
 	
-	if (pA->pos.x <= x_min)
+	if (pA->pos.x <= x_min && wallSpeed < 0.1f)
 	{	
 		pA->speed.x *= -1.0f * wall_bounce;	
 	}
@@ -335,7 +354,7 @@ void checkWalls(Particle *pA, float delta)
 	{
 		//float xdiff = x_min - pA->pos.x;
 		pA->pos.x = x_min;
-		pA->speed.x += wallSpeed*10.0f;
+		pA->speed.x += wallSpeed;
 	}
 	pA->pos.y = max(pA->pos.y, y_min);
 	pA->pos.z = max(pA->pos.z, z_min);
@@ -529,7 +548,7 @@ int main(void)
 			pA.speed += static_cast<float>(delta) * pA.force;
 
 			pA.pos += static_cast<float>(delta) * pA.speed;
-
+			
 			checkWalls(&pA, static_cast<float>(delta));			
 
 			pA.force = vec3(0.0f);
@@ -553,6 +572,8 @@ int main(void)
 			//ParticlesCount++;		
 		}
 
+		moveWall(static_cast<float>(delta));
+		
 		// Collision?!??
 		float epsi = 1.0f;
 		for (int ParticlesCount = 0; ParticlesCount < nextParticle; ParticlesCount++)
