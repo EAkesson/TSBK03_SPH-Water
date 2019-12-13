@@ -76,9 +76,11 @@ float pressureConstant = 250.0f; //250
 float viscosity = 0.018f; //0.018
 float particleMass = 0.02f;
 float particleSize = 0.1f;
+float particleRadius = particleSize / 2.0f;
+float partDistance = 2.0f;
 
-float sphRadius = particleSize * 5.0f; //Radius on which particle that affect eachother
-float h = particleSize * 4.0f; //Smoothing radius
+float sphRadius = particleRadius * 5.0f; //Radius on which particle that affect eachother
+float h = particleRadius * 4.0f; //Smoothing radius
 
 const float Poly6_Const = static_cast<float>(315.0f / (64.0f * PI * pow(h, 9)));
 const float Spiky_Const = static_cast<float>(-45.0f / (PI * pow(h, 6)));
@@ -273,6 +275,10 @@ void checkWalls(Particle *pA)
 	pA->pos.x = max(pA->pos.x, x_min);
 	pA->pos.y = max(pA->pos.y, y_min);
 	pA->pos.z = max(pA->pos.z, z_min);
+}
+
+vec3 projectUonV(const vec3& u, const vec3& v) {	
+	return v * (dot(u, v) / dot(v, v));	
 }
 /*
 void calcPressure(Particle pA, Particle pB)
@@ -533,41 +539,18 @@ int main(void)
 
 			pA.force = ((pA.force + pA.force2) / pA.density + G);
 			
-			// Collision?!??
-			float epsi = 1.0f;
-			for (int i = 0; i < nextParticle; i++)
-			{				
-				Particle& pB = ParticlesContainer[i];
-				vec3 diff = pA.pos - pB.pos;
-				float r = sqrt(dot(diff, diff));
-				
-				if(r < 2 * particleSize && dot(pA.speed, diff) < dot(pB.speed, diff))
-				{
-					float vNeRel = dot(pA.speed-pB.speed, normalize(diff) * -1.0f);
-					float jForm = (-(epsi + 1.0f) * vNeRel) / (1.0f / pA.weight + 1.0f / pB.weight);
-					vec3 Imp = normalize(diff) * jForm;
-					//printf("Imp: %f, %f, %f -- vNe: %f -- jForm: %f\n", Imp.x, Imp.y, Imp.z, vNeRel, jForm);
-					pA.force = pA.force + (Imp * (-1.0f / static_cast<float>(delta)));
-					pB.force = pB.force + (Imp * ( 1.0f / static_cast<float>(delta)));
-				}
-				//printf("Length: %f\n", length(pA.speed));
-			}
+			
 			
 
 			pA.speed += static_cast<float>(delta) * pA.force;
+
 			pA.pos += static_cast<float>(delta) * pA.speed;
-			
-			checkWalls(&pA);
-			
-			//printf("Speed: %f, %f, %f\n", pA.speed.x, pA.speed.y, pA.speed.z);
-			//printf("Pos: %f, %f, %f\n", pA.pos.x, pA.pos.y, pA.pos.z);
+
+			checkWalls(&pA);			
 
 			pA.force = vec3(0.0f);
 			pA.force2 = vec3(0.0f);
 
-			//checkNeighbour(pA, delta, ParticlesCount);
-			
-			//printf("Pos: %f, %f, %f\n", pA.speed.x, pA.speed.y, pA.speed.z);
 			
 			pA.cameradistance = glm::length2(pA.pos - CameraPosition);			
 
@@ -578,13 +561,57 @@ int main(void)
 
 			g_particule_position_size_data[4 * ParticlesCount + 3] = pA.size;
 
-			g_particule_color_data[4 * ParticlesCount + 0] = pA.r;
-			g_particule_color_data[4 * ParticlesCount + 1] = pA.g;
-			g_particule_color_data[4 * ParticlesCount + 2] = pA.b;
-			g_particule_color_data[4 * ParticlesCount + 3] = pA.a;
+			g_particule_color_data[4 * ParticlesCount + 0] = 50 + length(pA.speed);//pA.r;
+			g_particule_color_data[4 * ParticlesCount + 1] = 50 + length(pA.speed);
+			g_particule_color_data[4 * ParticlesCount + 2] = 200 + length(pA.speed);
+			g_particule_color_data[4 * ParticlesCount + 3] = 150;//pA.a;
 
 			//ParticlesCount++;		
 		}
+
+		// Collision?!??
+		float epsi = 1.0f;
+		for (int ParticlesCount = 0 + 1; ParticlesCount < nextParticle; ParticlesCount++)
+		{
+			Particle& pA = ParticlesContainer[ParticlesCount];
+			for (int i = ParticlesCount + 1; i < nextParticle; i++)
+			{
+				Particle& pB = ParticlesContainer[i];
+				vec3 diff = pA.pos - pB.pos;
+				float r = sqrt(dot(diff, diff));
+
+				if (r < 2 * particleRadius && dot(pA.speed, diff) < dot(pB.speed, diff))
+				{
+					//float vNeRel = dot(pA.speed - pB.speed, normalize(diff) * -1.0f);
+					//float jForm = (-(epsi + 1.0f) * vNeRel) / (1.0f / pA.weight + 1.0f / pB.weight);
+					//vec3 Imp = normalize(diff) * jForm;
+					////printf("Imp: %f, %f, %f -- vNe: %f -- jForm: %f\n", Imp.x, Imp.y, Imp.z, vNeRel, jForm);
+					//pA.speed = (pA.speed + (Imp * (-1.0f / static_cast<float>(delta))));
+					//pB.speed = (pB.speed + (Imp * (1.0f / static_cast<float>(delta))));			
+					
+					vec3 nv1; // new velocity for sphere 1
+					vec3 nv2; // new velocity for sphere 2
+					// this can probably be optimised a bit, but it basically swaps the velocity amounts
+					// that are perpendicular to the surface of the collistion.
+					// If the spheres had different masses, then u would need to scale the amounts of
+					// velocities exchanged inversely proportional to their masses.
+					nv1 = pA.speed;
+					nv1 += projectUonV(pB.speed, (pB.pos - pA.pos));
+					nv1 -= projectUonV(pA.speed, (pA.pos - pB.pos));
+					nv2 = pB.speed;
+					nv2 += projectUonV(pA.speed, (pB.pos - pA.pos));
+					nv2 -= projectUonV(pB.speed, (pA.pos - pB.pos));
+					pA.speed = nv1;
+					pB.speed = nv2;
+					
+					//Move the balls away from eachother
+					float overlap = r - particleRadius * partDistance * 2.0f; //Overlap
+					pA.pos -= 0.5f*overlap * (pA.pos - pB.pos);//displacement of this ball
+					pB.pos += 0.5f*overlap * (pA.pos - pB.pos);
+				}
+				
+			}
+		}		
 
 		SortParticles();
 
