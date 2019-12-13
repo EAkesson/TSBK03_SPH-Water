@@ -157,8 +157,9 @@ bool initProgram() {
 }
 
 void initControllableSphere()
-{	
-	ParticlesContainer[nextParticle].pos = vec3(0.0);
+{
+	
+	ParticlesContainer[nextParticle].pos = vec3(0.35f, 0.8f, 0.4);
 	ParticlesContainer[nextParticle].weight = particleMass*3;
 
 	ParticlesContainer[nextParticle].size = particleSize*3;
@@ -178,7 +179,7 @@ void generateNewParticles() {
 		int newparticles = 2;
 
 		for (int i = 0; i < newparticles; i++) {
-			if (nextParticle < MaxParticles) {
+			if (nextParticle < 250/*MaxParticles*/) { //Why?? we dont know why
 
 				// x: 3->8, y: 12->15, z: 2->8
 				/*float  xRel = 3 + (rand() % (8 - 3 + 1));
@@ -296,29 +297,30 @@ void checkWalls(Particle *pA, float delta)
 	const float wall_bounce = 0.9f;
 	
 	vec3 xNorm{ 1.0f, 1.0f, 0.0f }, yNorm{ 0.0f, 1.0f, 0.0f }, zNorm{ 0.0f, 0.0f, 1.0f };
-	if (pA->pos.x < x_min)
+	
+	if (pA->pos.x <= x_min)
 	{	
 		pA->speed.x *= -1.0f * wall_bounce;	
 	}
-	else if (pA->pos.x > x_max)
+	else if (pA->pos.x >= x_max)
 	{		
 		pA->speed.x *= -1.0f * wall_bounce;	
 	}
 
-	if (pA->pos.y < y_min)
+	if (pA->pos.y <= y_min)
 	{		
 		pA->speed.y *= -1.0f * wall_bounce;
 	}
-	/*else if (pA->pos.y > y_max)
+	/*else if (pA->pos.y >= y_max)
 	{
 	
 	}*/
 
-	if (pA->pos.z < z_min)
+	if (pA->pos.z <= z_min)
 	{	
 		pA->speed.z *= -1.0f * wall_bounce;	
 	}
-	else if (pA->pos.z > z_max)
+	else if (pA->pos.z >= z_max)
 	{
 		pA->speed.z *= -1.0f * wall_bounce;
 	}
@@ -342,77 +344,6 @@ void checkWalls(Particle *pA, float delta)
 vec3 projectUonV(const vec3& u, const vec3& v) {	
 	return v * (dot(u, v) / dot(v, v));	
 }
-/*
-void calcPressure(Particle pA, Particle pB)
-{
-	pA.density = 0.0f;
-
-	vec3 diff = pA.pos - pB.pos;
-	float r2 = dot(diff, diff);
-	if (r2 < pow(h, 2))
-	{
-		float W = Poly6_Const * pow(pow(h, 2) - r2, 3);
-		pA.density += pB.weight * W;
-	}
-	pA.density = max(referenceDensity, pA.density);
-
-	pA.pressure = pressureConstant * (pA.density - referenceDensity);
-}
-
-void calcForce(Particle pA, Particle pB)
-{
-	pA.force = vec3(0.0);
-	
-	vec3 diff = pA.pos - pB.pos;
-	float r = sqrt(dot(diff, diff));
-	if (r > 0 && r < h)
-	{
-		vec3 rNorm = diff / r;
-		float W = Spiky_Const * pow(h - r, 2);
-
-		pA.force += (pB.weight / pA.weight) * ((pA.pressure + pB.pressure) / (2.0f * pA.density * pB.density)) * W * rNorm;
-	}
-	pA.force *= -1.0f;
-}
-
-void calcViscosity(Particle pA, Particle pB, float deltaTime)
-{
-	vec3 tempForce{ 0.0 };
-
-	vec3 diff = pA.pos - pB.pos;
-	float r = sqrt(dot(diff, diff));
-	if(r > 0 && r < h)
-	{
-		vec3 rNorm = diff / r;
-		float r3 = pow(r, 3);
-		float W = -(r3 / (2.0f * pow(h, 3)) + (pow(r, 2) / pow(h, 2)) + h / (2.0f * r)) - 1.0f;
-
-		pA.force2 += (pB.weight / pA.weight) * (1.0f / pB.density) * (pB.speed - pA.speed) * W * rNorm;
-	}
-
-	pA.force2 *= viscosity;
-}
-
-void checkNeighbour(Particle pA, float deltaTime, int currElement)
-{
-	for(int i = 0; i < nextParticle; i++)
-	{
-		//printf("%s", "Hej");
-		if(length(pA.pos - ParticlesContainer[i].pos) < EPSILON)
-		{
-			Particle& pB = ParticlesContainer[i];
-			calcPressure(pA, pB);
-			if(i != currElement)
-			{
-				calcForce(pA, pB);
-				calcViscosity(pA, pB, deltaTime);
-			}
-			//setBoundingBoxWithPosAndSpeed(pA, deltaTime);
-		}
-	}
-}
-
-*/
 
 int main(void)
 {
@@ -533,20 +464,6 @@ int main(void)
 				updateControllable(&pA, ParticlesCount, static_cast<float>(delta));
 				continue;
 			}
-				
-			//printf("Pos: %f, %f, %f\n", pA.pos.x, pA.pos.y, pA.pos.z);
-
-			// Simulate simple physics : gravity only, no collisions
-			/*pA.speed += glm::vec3(0.0f, -9.82f, 0.0f) * (float)delta * 0.5f;
-			pA.pos += pA.speed * (float)delta;
-
-			pA.pos.x = min(pA.pos.x, 15.0f);
-			pA.pos.y = min(pA.pos.y, 20.0f);
-			pA.pos.z = min(pA.pos.z, 10.0f);
-			
-			pA.pos.x = max(pA.pos.x, 0.0f);
-			pA.pos.y = max(pA.pos.y, 0.0f);
-			pA.pos.z = max(pA.pos.z, 0.0f);*/
 
 			pA.density = 0.0f;
 			pA.force = vec3(0.0f);
@@ -677,7 +594,14 @@ int main(void)
 					if (!pA.controllable)
 						pA.pos -= 0.5f*overlap * (pA.pos - pB.pos);//displacement of this ball
 					if (!pB.controllable)
-						pB.pos += 0.5f*overlap * (pA.pos - pB.pos);					
+					{
+						pB.pos += 0.5f*overlap * (pA.pos - pB.pos);
+						if (r < pB.size / 2 * 0.1)
+						{
+							pB.pos.y += pB.size / 2;
+						}
+					}
+						
 					
 				}
 				
