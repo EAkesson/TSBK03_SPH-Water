@@ -67,15 +67,15 @@ static GLubyte* g_particule_color_data = new GLubyte[MaxParticles * 4];
 #define EPSILON 0.000001
 
 float referenceDensity = 1.0f; //1.0
-float pressureConstant = 250.0f; //250
+float pressureConstant = 2.5f; //250
 float viscosity = 0.018f; //0.018
-float particleMass = 0.02f;
+float particleMass = 0.2f;
 float particleSize = 0.1f;
 float particleRadius = particleSize / 2.0f;
 float partDistance = 2.0f;
 
-float sphRadius = particleRadius * 5.0f; //Radius on which particle that affect eachother
-float h = particleRadius * 4.0f; //Smoothing radius
+float sphRadius = particleRadius * 2.0f; //Radius on which particle that affect eachother
+float h = 1.0f; //Smoothing radius
 
 const float Poly6_Const = static_cast<float>(315.0f / (64.0f * PI * pow(h, 9)));
 const float Spiky_Const = static_cast<float>(-45.0f / (PI * pow(h, 6)));
