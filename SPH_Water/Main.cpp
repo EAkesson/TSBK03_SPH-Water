@@ -41,30 +41,23 @@ using namespace glm;
 float lastTime = 0.0f;
 int nbFrames = 0;
 
-void calcFPS()
-{
-	// Measure speed
-	double currentTime = glfwGetTime();
-	double delta = currentTime - lastTime;
-	nbFrames++;
-	if (delta >= 1.0) { // If last cout was more than 1 sec ago
-		double fps = double(nbFrames) / delta;
 
-		std::stringstream ss;
-		ss << "SPH_Water, We promise it looks good" << " [" << fps << " FPS]";
 
-		glfwSetWindowTitle(window, ss.str().c_str());
-
-		nbFrames = 0;
-		lastTime = static_cast<float>(currentTime);
-	}
-}
-
-const int MaxParticles = 200;
+const int MaxParticles = 500;
 Particle ParticlesContainer[MaxParticles];
 int nextParticle = 0;
 const int WindowWidth = 1024;
 const int WindowHeight = 768;
+
+float x_min = 0.0f;
+const float x_max = 1.5f / 2.0f;
+const float y_min = 0.0f;
+const float y_max = 2.0f / 2.0f;
+const float z_min = 0.0f;
+const float z_max = 1.0f / 2.0f;
+
+static GLfloat* g_particule_position_size_data = new GLfloat[MaxParticles * 4];
+static GLubyte* g_particule_color_data = new GLubyte[MaxParticles * 4];
 
 /* ********** */
 // For SPH calculations
@@ -87,6 +80,25 @@ const float Spiky_Const = static_cast<float>(-45.0f / (PI * pow(h, 6)));
 vec3 G{ 0.0f, -9.82f, 0.0 };
 
 /* ********** */
+
+void calcFPS()
+{
+	// Measure speed
+	double currentTime = glfwGetTime();
+	double delta = currentTime - lastTime;
+	nbFrames++;
+	if (delta >= 1.0) { // If last cout was more than 1 sec ago
+		double fps = double(nbFrames) / delta;
+
+		std::stringstream ss;
+		ss << "SPH_Water, We promise it looks good" << " [" << fps << " FPS] " << " NumPar:" << nextParticle;
+
+		glfwSetWindowTitle(window, ss.str().c_str());
+
+		nbFrames = 0;
+		lastTime = static_cast<float>(currentTime);
+	}
+}
 
 void SortParticles() {
 	std::sort(&ParticlesContainer[0], &ParticlesContainer[MaxParticles]);
@@ -144,135 +156,185 @@ bool initProgram() {
 	return true;
 }
 
-void generateNewParticles(double *delta) {
-	// Generate 10 new particule each millisecond,
-		// but limit this to 16 ms (60 fps), or if you have 1 long frame (1sec),
-		// newparticles will be huge and the next frame even longer.
-	int newparticles = 2;//(int)(*delta*1000.0);
-	/*if (newparticles > (int)(0.016f*1000.0))
-		newparticles = (int)(0.016f*1000.0);*/
+void initControllableSphere()
+{	
+	ParticlesContainer[nextParticle].pos = vec3(0.0);
+	ParticlesContainer[nextParticle].weight = particleMass*3;
 
-	for (int i = 0; i < newparticles; i++) {
-		if (nextParticle < MaxParticles) {
+	ParticlesContainer[nextParticle].size = particleSize*3;
+	ParticlesContainer[nextParticle].r = 255;
+	ParticlesContainer[nextParticle].g = 0;
+	ParticlesContainer[nextParticle].b = 0;
+	ParticlesContainer[nextParticle].a = 255;
+	ParticlesContainer[nextParticle].controllable = true;
 
-			// x: 3->8, y: 12->15, z: 2->8
-			/*float  xRel = 3 + (rand() % (8 - 3 + 1));
-			float yRel = 12 + (rand() % (15 - 12 + 1));
-			float zRel = 2 + (rand() % (8 - 2 + 1));*/
+	nextParticle++;
+}
 
+void generateNewParticles() {
 
-			float xL = 0.3f, xH = 0.8f;
-			float yL = 1.2f, yH = 1.5f;
-			float zL = 0.2f, zH = 0.8f;
-			vec3 tempPos = vec3(
-				xL + static_cast<float>(rand()) / static_cast<float>(RAND_MAX / (xH - xL)),
-				yL + static_cast<float>(rand()) / static_cast<float>(RAND_MAX / (yH - yL)),
-				zL + static_cast<float>(rand()) / static_cast<float>(RAND_MAX / (zH - zL))
-			);
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+	{
+		int newparticles = 2;
 
-			//printf("Pos: x=%f, y=%f, z=%f\n", tempPos.x, tempPos.y, tempPos.z);
-			
-			ParticlesContainer[nextParticle].pos = tempPos;
-			ParticlesContainer[nextParticle].weight = particleMass;
-			ParticlesContainer[nextParticle].density = referenceDensity;
-			ParticlesContainer[nextParticle].pressure = 0.0f;
+		for (int i = 0; i < newparticles; i++) {
+			if (nextParticle < MaxParticles) {
 
-			float spread = 1.5f;
-			glm::vec3 maindir = glm::vec3(0.0f, 1.0f, 0.0f);
-			// Very bad way to generate a random direction; 
-			// See for instance http://stackoverflow.com/questions/5408276/python-uniform-spherical-distribution instead,
-			// combined with some user-controlled parameters (main direction, spread, etc)
-			glm::vec3 randomdir = glm::vec3(
-				(rand() % 2000 - 1000.0f) / 1000.0f,
-				(rand() % 2000 - 1000.0f) / 1000.0f,
-				(rand() % 2000 - 1000.0f) / 1000.0f
-			);
-
-			ParticlesContainer[nextParticle].speed = maindir + randomdir * spread;
+				// x: 3->8, y: 12->15, z: 2->8
+				/*float  xRel = 3 + (rand() % (8 - 3 + 1));
+				float yRel = 12 + (rand() % (15 - 12 + 1));
+				float zRel = 2 + (rand() % (8 - 2 + 1));*/
 
 
-			// Very bad way to generate a random color
-			ParticlesContainer[nextParticle].r = rand() % 256;
-			ParticlesContainer[nextParticle].g = rand() % 256;
-			ParticlesContainer[nextParticle].b = rand() % 256;
-			ParticlesContainer[nextParticle].a = 255;//(rand() % 256) / 3;
+				float xL = 0.3f, xH = 0.4f;
+				float yL = 1.2f, yH = 1.5f;
+				float zL = 0.2f, zH = 0.6f;
+				vec3 tempPos = vec3(
+					xL + static_cast<float>(rand()) / static_cast<float>(RAND_MAX / (xH - xL)),
+					yL + static_cast<float>(rand()) / static_cast<float>(RAND_MAX / (yH - yL)),
+					zL + static_cast<float>(rand()) / static_cast<float>(RAND_MAX / (zH - zL))
+				);
 
-			//ParticlesContainer[nextParticle].size = (rand() % 1000) / 2000.0f + 0.1f;
+				//printf("Pos: x=%f, y=%f, z=%f\n", tempPos.x, tempPos.y, tempPos.z);
 
-			ParticlesContainer[nextParticle].size = particleSize;
+				ParticlesContainer[nextParticle].pos = tempPos;
+				ParticlesContainer[nextParticle].weight = particleMass;
+				ParticlesContainer[nextParticle].density = referenceDensity;
+				ParticlesContainer[nextParticle].pressure = 0.0f;
 
-			nextParticle++;
+				float spread = 0.5f;
+				glm::vec3 maindir = glm::vec3(0.0f, -1.0f, 0.0f);
+				// Very bad way to generate a random direction; 
+				// See for instance http://stackoverflow.com/questions/5408276/python-uniform-spherical-distribution instead,
+				// combined with some user-controlled parameters (main direction, spread, etc)
+				glm::vec3 randomdir = glm::vec3(
+					(rand() % 2000 - 1000.0f) / 1000.0f,
+					0.0f/*rand() % 2000 - 1000.0f) / 1000.0f*/,
+					(rand() % 2000 - 1000.0f) / 1000.0f
+				);
+
+				ParticlesContainer[nextParticle].speed = maindir + randomdir * spread;
+
+
+				// Very bad way to generate a random color
+				ParticlesContainer[nextParticle].r = rand() % 256;
+				ParticlesContainer[nextParticle].g = rand() % 256;
+				ParticlesContainer[nextParticle].b = rand() % 256;
+				ParticlesContainer[nextParticle].a = 255;//(rand() % 256) / 3;
+
+				//ParticlesContainer[nextParticle].size = (rand() % 1000) / 2000.0f + 0.1f;
+
+				ParticlesContainer[nextParticle].size = particleSize;
+				ParticlesContainer[nextParticle].controllable = false;
+
+				nextParticle++;
+			}
 		}
 	}
 }
 
-void checkWalls(Particle *pA)
+void updateControllable(Particle *pA, int ParticlesCount, float deltaT)
 {
-	const float x_min = 0.0f;
-	const float x_max = 1.5f/2.0f;
-	const float y_min = 0.0f;
-	const float y_max = 2.0f / 2.0f;
-	const float z_min = 0.0f;
-	const float z_max = 1.0f / 2.0f;
+	float speed = 1.0f;
+
+	pA->speed = vec3(0.0f);
+	
+	if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+	{		
+		pA->speed.z = -speed;
+	}
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+	{	
+		pA->speed.z = speed;
+	}
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+	{	
+		pA->speed.x = speed;
+	}
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+	{	
+		pA->speed.x = -speed;
+	}
+	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+	{		
+		pA->speed.y = speed;
+	}
+	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+	{		
+		pA->speed.y = -speed;
+	}
+
+	pA->pos += pA->speed * deltaT;
+	
+	// Put it in the GPU buffer
+	g_particule_position_size_data[4 * ParticlesCount + 0] = pA->pos.x;
+	g_particule_position_size_data[4 * ParticlesCount + 1] = pA->pos.y;
+	g_particule_position_size_data[4 * ParticlesCount + 2] = pA->pos.z;
+
+	g_particule_position_size_data[4 * ParticlesCount + 3] = pA->size;
+
+	g_particule_color_data[4 * ParticlesCount + 0] = pA->r;
+	g_particule_color_data[4 * ParticlesCount + 1] = pA->g;
+	g_particule_color_data[4 * ParticlesCount + 2] = pA->b;
+	g_particule_color_data[4 * ParticlesCount + 3] = pA->a;
+}
+
+void checkWalls(Particle *pA, float delta)
+{
+	float wallSpeed = 0.01f;
+	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS)
+	{
+		x_min += wallSpeed * delta;
+		if (x_min > x_max - particleSize*2.0f)
+			x_min = x_max - particleSize*2.0f;
+	}
+	else if(glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS)
+	{
+		x_min -= wallSpeed * delta;
+	}
 
 	const float wall_bounce = 0.9f;
 	
 	vec3 xNorm{ 1.0f, 1.0f, 0.0f }, yNorm{ 0.0f, 1.0f, 0.0f }, zNorm{ 0.0f, 0.0f, 1.0f };
 	if (pA->pos.x < x_min)
-	{
-		//pA.speed *= -1.0f;
-
-		//pA->speed -= 2.0f * dot(normalize(pA->speed), xNorm) * xNorm *wall_bounce;
-		pA->speed.x *= -1.0f * wall_bounce;
-		//pA.pos.x = max(pA.pos.x, 0.0f);
+	{	
+		pA->speed.x *= -1.0f * wall_bounce;	
 	}
 	else if (pA->pos.x > x_max)
-	{
-		//pA.speed *= -1.0f;
-
-		//pA->speed -= 2.0f * dot(normalize(pA->speed), (-1.0f * xNorm)) * (-1.0f * xNorm) *wall_bounce;
-		pA->speed.x *= -1.0f * wall_bounce;
-		//pA.pos.x = min(pA.pos.x, 15.0f);
+	{		
+		pA->speed.x *= -1.0f * wall_bounce;	
 	}
 
 	if (pA->pos.y < y_min)
-	{
-		//pA.speed *= -1.0f;
-
-		//pA->speed -= 2.0f * dot(normalize(pA->speed), yNorm) * yNorm *wall_bounce;
+	{		
 		pA->speed.y *= -1.0f * wall_bounce;
-		//pA.pos.y = max(pA.pos.y, 0.0f);
 	}
 	/*else if (pA->pos.y > y_max)
 	{
-		//pA.speed *= -1.0f;
-
-		pA->speed -= 2.0f * dot(normalize(pA->speed), (-1.0f * yNorm)) * (-1.0f * yNorm) *wall_bounce;
-		//pA.pos.y = min(pA.pos.y, 20.0f);
+	
 	}*/
 
 	if (pA->pos.z < z_min)
-	{
-		//pA.speed *= -1.0f;
-
-		//pA->speed -= 2.0f * dot(normalize(pA->speed), zNorm) * zNorm *wall_bounce;
-		pA->speed.z *= -1.0f * wall_bounce;
-		//pA.pos.z = max(pA.pos.z, 0.0f);
+	{	
+		pA->speed.z *= -1.0f * wall_bounce;	
 	}
 	else if (pA->pos.z > z_max)
 	{
-		//pA.speed *= -1.0f;
-
-		//pA->speed -= 2.0f * dot(normalize(pA->speed), (-1.0f * zNorm)) * (-1.0f * zNorm) *wall_bounce;
 		pA->speed.z *= -1.0f * wall_bounce;
-		//pA.pos.z = min(pA.pos.z, 10.0f);
 	}
 
 	pA->pos.x = min(pA->pos.x, x_max);
 	//pA->pos.y = min(pA->pos.y, 2.0f);
 	pA->pos.z = min(pA->pos.z, z_max);
 
-	pA->pos.x = max(pA->pos.x, x_min);
+	//pA->pos.x = max(pA->pos.x, x_min);
+	//x_min is a special snowflake
+	if(pA->pos.x < x_min)
+	{
+		//float xdiff = x_min - pA->pos.x;
+		pA->pos.x = x_min;
+		pA->speed.x += wallSpeed*10.0f;
+	}
 	pA->pos.y = max(pA->pos.y, y_min);
 	pA->pos.z = max(pA->pos.z, z_min);
 }
@@ -358,7 +420,7 @@ int main(void)
 	if (!initProgram())
 		return -1;
 	
-
+	initControllableSphere();
 
 
 	// Ensure we can capture the escape key being pressed below
@@ -394,8 +456,8 @@ int main(void)
 	GLuint TextureID = glGetUniformLocation(programID, "myTextureSampler");
 
 
-	static GLfloat* g_particule_position_size_data = new GLfloat[MaxParticles * 4];
-	static GLubyte* g_particule_color_data = new GLubyte[MaxParticles * 4];
+	/*static GLfloat* g_particule_position_size_data = new GLfloat[MaxParticles * 4];
+	static GLubyte* g_particule_color_data = new GLubyte[MaxParticles * 4];*/
 
 	for (int i = 0; i < MaxParticles; i++) {		
 		ParticlesContainer[i].cameradistance = -1.0f;
@@ -441,8 +503,7 @@ int main(void)
 
 		double currentTime = glfwGetTime();
 		double delta = currentTime - lastTime;
-		lastTime = currentTime;
-
+		lastTime = currentTime;		
 
 		// Calc FPS and set title
 		calcFPS();
@@ -459,13 +520,20 @@ int main(void)
 
 		glm::mat4 ViewProjectionMatrix = ProjectionMatrix * ViewMatrix;
 
-		generateNewParticles(&delta);
+		generateNewParticles();
 
 
 		// Simulate all particles		
 		for (int ParticlesCount = 0; ParticlesCount < nextParticle; ParticlesCount++) {
 
 			Particle& pA = ParticlesContainer[ParticlesCount]; // shortcut
+
+			if (pA.controllable)
+			{
+				updateControllable(&pA, ParticlesCount, static_cast<float>(delta));
+				continue;
+			}
+				
 			//printf("Pos: %f, %f, %f\n", pA.pos.x, pA.pos.y, pA.pos.z);
 
 			// Simulate simple physics : gravity only, no collisions
@@ -491,7 +559,9 @@ int main(void)
 					continue;
 				}
 				Particle& pB = ParticlesContainer[i];
-				
+
+				if (pB.controllable)
+					continue;
 				
 
 				vec3 diff = pA.pos - pB.pos;
@@ -539,14 +609,11 @@ int main(void)
 
 			pA.force = ((pA.force + pA.force2) / pA.density + G);
 			
-			
-			
-
 			pA.speed += static_cast<float>(delta) * pA.force;
 
 			pA.pos += static_cast<float>(delta) * pA.speed;
 
-			checkWalls(&pA);			
+			checkWalls(&pA, static_cast<float>(delta));			
 
 			pA.force = vec3(0.0f);
 			pA.force2 = vec3(0.0f);
@@ -571,7 +638,7 @@ int main(void)
 
 		// Collision?!??
 		float epsi = 1.0f;
-		for (int ParticlesCount = 0 + 1; ParticlesCount < nextParticle; ParticlesCount++)
+		for (int ParticlesCount = 0; ParticlesCount < nextParticle; ParticlesCount++)
 		{
 			Particle& pA = ParticlesContainer[ParticlesCount];
 			for (int i = ParticlesCount + 1; i < nextParticle; i++)
@@ -580,7 +647,7 @@ int main(void)
 				vec3 diff = pA.pos - pB.pos;
 				float r = sqrt(dot(diff, diff));
 
-				if (r < 2 * particleRadius && dot(pA.speed, diff) < dot(pB.speed, diff))
+				if (r < (pA.size/2 + pB.size/2) && dot(pA.speed, diff) < dot(pB.speed, diff))
 				{
 					//float vNeRel = dot(pA.speed - pB.speed, normalize(diff) * -1.0f);
 					//float jForm = (-(epsi + 1.0f) * vNeRel) / (1.0f / pA.weight + 1.0f / pB.weight);
@@ -603,11 +670,15 @@ int main(void)
 					nv2 -= projectUonV(pB.speed, (pA.pos - pB.pos));
 					pA.speed = nv1;
 					pB.speed = nv2;
-					
+
 					//Move the balls away from eachother
-					float overlap = r - particleRadius * partDistance * 2.0f; //Overlap
-					pA.pos -= 0.5f*overlap * (pA.pos - pB.pos);//displacement of this ball
-					pB.pos += 0.5f*overlap * (pA.pos - pB.pos);
+					float overlap = r - (pA.size / 2 + pB.size / 2) * partDistance; //Overlap
+					
+					if (!pA.controllable)
+						pA.pos -= 0.5f*overlap * (pA.pos - pB.pos);//displacement of this ball
+					if (!pB.controllable)
+						pB.pos += 0.5f*overlap * (pA.pos - pB.pos);					
+					
 				}
 				
 			}

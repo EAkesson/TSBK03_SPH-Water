@@ -13,6 +13,7 @@ struct Particle
 	unsigned char r, g, b, a; // Color
 	float size, angle, weight;	
 	float cameradistance; // *Squared* distance to the camera. if dead : -1.0f
+	bool controllable;
 
 	bool operator<(const Particle& that) const;
 };
