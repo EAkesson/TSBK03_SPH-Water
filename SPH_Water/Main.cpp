@@ -67,19 +67,21 @@ static GLubyte* g_particule_color_data = new GLubyte[MaxParticles * 4];
 #define EPSILON 0.000001
 
 float referenceDensity = 1.0f; //1.0
-float pressureConstant = 2.5f; //250
+float pressureConstant = 0.250f; //250
 float viscosity = 0.018f; //0.018
 float particleMass = 0.2f;
 float particleSize = 0.1f;
 float particleRadius = particleSize / 2.0f;
 float partDistance = 2.0f;
 
-float sphRadius = particleRadius * 2.0f; //Radius on which particle that affect eachother
-float h = 1.0f; //Smoothing radius
+float sphRadius = particleSize * 10.0f; //Radius on which particle that affect eachother
+float h = sphRadius / 2.0f;// 1.00f; //Smoothing radius
 
 const float Poly6_Const = static_cast<float>(315.0f / (64.0f * PI * pow(h, 9)));
 const float Spiky_Const = static_cast<float>(-45.0f / (PI * pow(h, 6)));
 vec3 G{ 0.0f, -9.82f, 0.0 };
+
+float slowmotion = 0.1;
 
 /* ********** */
 
@@ -93,7 +95,7 @@ void calcFPS()
 		double fps = double(nbFrames) / delta;
 
 		std::stringstream ss;
-		ss << "SPH_Water, We promise it looks good" << " [" << fps << " FPS] " << " NumPar:" << nextParticle;
+		ss << "SPH_Water, We promise it looks good" << " [" << fps << " FPS] " << " NumPar:" << nextParticle << " Speed: " << slowmotion;
 
 		glfwSetWindowTitle(window, ss.str().c_str());
 
@@ -452,7 +454,7 @@ int main(void)
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		double currentTime = glfwGetTime();
-		double delta = currentTime - lastTime;
+		double delta = (currentTime - lastTime) * slowmotion;
 		lastTime = currentTime;		
 
 		// Calc FPS and set title
@@ -489,11 +491,11 @@ int main(void)
 			pA.force2 = vec3(0.0f);
 			
 			for(int i = 0; i < nextParticle; i++)
-			{
-				if (length(ParticlesContainer[i].pos - pA.pos) < sphRadius)
-				{
+			{				
+				if (length(ParticlesContainer[i].pos - pA.pos) > sphRadius)
+				{				
 					continue;
-				}
+				}				
 				Particle& pB = ParticlesContainer[i];
 
 				if (pB.controllable)
@@ -502,7 +504,7 @@ int main(void)
 
 				vec3 diff = pA.pos - pB.pos;
 				float r2 = dot(diff, diff);
-				float h2 = pow(h, 2);
+				float h2 = pow(h, 2);			
 				if (r2 < h2)
 				{
 					float W = Poly6_Const * pow(h2 - r2, 3);
@@ -564,11 +566,13 @@ int main(void)
 
 			g_particule_position_size_data[4 * ParticlesCount + 3] = pA.size;
 
-			g_particule_color_data[4 * ParticlesCount + 0] = 50 + length(pA.speed);//pA.r;
-			g_particule_color_data[4 * ParticlesCount + 1] = 50 + length(pA.speed);
-			g_particule_color_data[4 * ParticlesCount + 2] = 200 + length(pA.speed);
-			g_particule_color_data[4 * ParticlesCount + 3] = 150;//pA.a;
+			g_particule_color_data[4 * ParticlesCount + 0] = 15 * length(pA.speed);// length(pA.density);//pA.r;
+			g_particule_color_data[4 * ParticlesCount + 1] = 15 * length(pA.speed);;
+			g_particule_color_data[4 * ParticlesCount + 2] = 100 + 2*length(pA.density);
+			g_particule_color_data[4 * ParticlesCount + 3] = 150;//pA.a;			
 
+			
+			
 			//ParticlesCount++;		
 		}
 
@@ -631,6 +635,16 @@ int main(void)
 
 		SortParticles();
 
+		//Slowmotion
+		if(glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
+		{
+			slowmotion += 0.01f;
+		}
+		else if(glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS)
+		{
+			slowmotion -= 0.01f;
+			slowmotion = max(slowmotion, 0.01f);			
+		}
 
 		//printf("%d ",ParticlesCount);		
 
